@@ -95,7 +95,15 @@ function getF(ctx,x,y){
 
   r/=c; g/=c; b/=c;
 
-  return b/(r+g+b);
+  // ===== HYBRID FLUORESCENCE =====
+  let sum = r+g+b+1;
+
+  let f1 = b/sum; // normalized blue
+  let f2 = (b - (r+g)/2)/sum; // contrast
+
+  let F = (f1*0.7) + (f2*0.3);
+
+  return F;
 }
 
 // ===== CAPTURE =====
