@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G6PD Analyzer</title>
+
+<link rel="manifest" href="manifest.json">
+</head>
+
+<body style="background:black;color:white;text-align:center">
+
+<h2>G6PD Analyzer</h2>
+
+<video id="video" autoplay playsinline width="320"></video><br>
+<button onclick="capture()">Capture</button>
+
+<canvas id="canvas" width="320" height="320"></canvas>
+
+<p id="result"></p>
+
+<script src="app.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+
+</body>
+</html>
