@@ -60,7 +60,14 @@ button {
 
 <script>
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
+ 
+  navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
+    video.srcObject = stream;
+  })
+  .catch(err => {
+    alert("Camera error: " + err);
+  });
 }
 </script>
 
