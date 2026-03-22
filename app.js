@@ -129,12 +129,15 @@ function capture(){
     val[r.name]=getF(ctx,r.x,r.y);
   });
 
-  let ratio = val.Sample / (val.Normal || 1);
+  // ===== ใส่ตรงนี้ =====
+  let ratio = (val.Sample - val.Deficient) /
+              ((val.Normal - val.Deficient) + 0.001);
 
-  let res="Complete Deficient";
+  let res = "Complete Deficient";
 
-  if(ratio>0.8) res="Normal";
-  else if(ratio>0.4) res="Partial Deficient";
+  if (ratio > 0.8) res = "Normal";
+  else if (ratio > 0.4) res = "Partial Deficient";
+  // ====================
 
   document.getElementById('result').innerText =
     `Ratio: ${ratio.toFixed(2)} → ${res}`;
