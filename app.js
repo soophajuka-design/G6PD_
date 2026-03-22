@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+ console.log("App Loaded");
 <html>
 <head>
 <meta charset="UTF-8">
