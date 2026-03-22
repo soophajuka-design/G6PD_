@@ -1,31 +1,51 @@
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const octx = overlay.getContext('2d');
+const camBtn = document.getElementById('camBtn');
 
-// เปิดกล้อง (เวอร์ชันเสถียร)
+let stream = null;
+let cameraOn = false;
+
+// ===== CAMERA CONTROL =====
 async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true
-    });
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
     video.srcObject = stream;
-    console.log("Camera started");
+    cameraOn = true;
+    camBtn.innerText = "Stop Camera";
+    console.log("Camera ON");
   } catch (err) {
     alert("Camera error: " + err);
     console.error(err);
   }
 }
 
-startCamera();
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+  video.srcObject = null;
+  cameraOn = false;
+  camBtn.innerText = "Start Camera";
+  console.log("Camera OFF");
+}
 
-// ROI
+function toggleCamera() {
+  if (cameraOn) {
+    stopCamera();
+  } else {
+    startCamera();
+  }
+}
+
+// ===== ROI =====
 const ROIs = [
   {name:"Normal", x:60, y:140},
   {name:"Sample", x:160, y:140},
   {name:"Deficient", x:260, y:140}
 ];
 
-// วาด overlay
+// ===== OVERLAY =====
 function drawOverlay(){
   octx.clearRect(0,0,320,320);
 
@@ -51,14 +71,13 @@ function drawOverlay(){
   octx.stroke();
 }
 
-// loop
 function loop(){
   drawOverlay();
   requestAnimationFrame(loop);
 }
 loop();
 
-// fluorescence
+// ===== ANALYSIS =====
 function getF(ctx,x,y){
   let size=30;
   let d=ctx.getImageData(x,y,size,size).data;
@@ -79,8 +98,13 @@ function getF(ctx,x,y){
   return b/(r+g+b);
 }
 
-// capture
+// ===== CAPTURE =====
 function capture(){
+  if (!cameraOn) {
+    alert("Please start camera first");
+    return;
+  }
+
   if (!video.videoWidth) {
     alert("Camera not ready");
     return;
