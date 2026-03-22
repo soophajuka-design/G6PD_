@@ -107,41 +107,51 @@ function getF(ctx,x,y){
 }
 
 // ===== CAPTURE =====
-function capture(){
-  if (!cameraOn) {
-    alert("Please start camera first");
-    return;
-  }
+// ===== คำนวณค่า fluorescence =====
+let Fn = val.Normal;
+let Fs = val.Sample;
+let Fd = val.Deficient;
 
-  if (!video.videoWidth) {
-    alert("Camera not ready");
-    return;
-  }
+// ===== normalize =====
+let ratio = (Fs - Fd) / ((Fn - Fd) + 0.001);
 
-  const canvas=document.getElementById('canvas');
-  const ctx=canvas.getContext('2d');
+// ===== แปลผล sample =====
+let sampleResult = "Complete Deficient";
 
-  ctx.drawImage(video,0,0,320,320);
+if (ratio > 0.8) sampleResult = "Normal";
+else if (ratio > 0.4) sampleResult = "Partial Deficient";
 
-  let val={};
+// ===== แปลผล control =====
+let normalCtrl = (Fn > 0.5) ? "Pass" : "Fail";
+let deficientCtrl = (Fd < 0.2) ? "Pass" : "Fail";
 
-  ROIs.forEach(r=>{
-    val[r.name]=getF(ctx,r.x,r.y);
-  });
+// ===== ตรวจความต่าง (signal window) =====
+let delta = Fn - Fd;
+let validSignal = (delta > 0.25);
 
-  // ===== ใส่ตรงนี้ =====
-  let ratio = (val.Sample - val.Deficient) /
-              ((val.Normal - val.Deficient) + 0.001);
+// ===== สรุป validity =====
+let validity = "VALID";
 
-  let res = "Complete Deficient";
-
-  if (ratio > 0.8) res = "Normal";
-  else if (ratio > 0.4) res = "Partial Deficient";
-  // ====================
-
-  document.getElementById('result').innerText =
-    `Ratio: ${ratio.toFixed(2)} → ${res}`;
+if (normalCtrl === "Fail" || deficientCtrl === "Fail" || !validSignal){
+  validity = "INVALID";
 }
+/ ===== ใส่ตรงนี้ =====
+  if(validity === "INVALID"){
+    alert("Invalid test run กรุณาทดสอบใหม่");
+  }
+  // ===================
+// ===== แสดงผล =====
+document.getElementById('result').innerText =
+  `Sample: ${sampleResult}
+Ratio: ${ratio.toFixed(2)}
+
+Normal Ctrl: ${normalCtrl}
+Deficient Ctrl: ${deficientCtrl}
+Signal Δ: ${delta.toFixed(2)}
+
+Result: ${validity}`;
+
+
 // ===== AUTO DETECT (IMPROVED) =====
 function autoDetect(){
   if (!cameraOn || !video.videoWidth) {
