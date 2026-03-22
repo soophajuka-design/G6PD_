@@ -131,3 +131,80 @@ function capture(){
   document.getElementById('result').innerText =
     `Ratio: ${ratio.toFixed(2)} → ${res}`;
 }
+// ===== AUTO DETECT =====
+function autoDetect(){
+  if (!cameraOn || !video.videoWidth) {
+    alert("Camera not ready");
+    return;
+  }
+
+  const canvas=document.getElementById('canvas');
+  const ctx=canvas.getContext('2d');
+
+  // capture frame
+  ctx.drawImage(video,0,0,320,320);
+
+  const imgData = ctx.getImageData(0,0,320,320).data;
+
+  let candidates = [];
+
+  // scan image (step ลดภาระ CPU)
+  for(let y=0; y<320; y+=10){
+    for(let x=0; x<320; x+=10){
+
+      let idx = (y*320 + x)*4;
+
+      let r = imgData[idx];
+      let g = imgData[idx+1];
+      let b = imgData[idx+2];
+
+      let f = b/(r+g+b+1);
+
+      // เก็บเฉพาะจุดสว่าง
+      if(f > 0.4){
+        candidates.push({x,y,f});
+      }
+    }
+  }
+
+  if(candidates.length < 3){
+    alert("Detect failed");
+    return;
+  }
+
+  // เรียงตามความสว่าง
+  candidates.sort((a,b)=>b.f - a.f);
+
+  // เอา top 3
+  let top = candidates.slice(0,20);
+
+  // จัดกลุ่มโดย x (ซ้าย→ขวา)
+  top.sort((a,b)=>a.x - b.x);
+
+  // เลือก 3 จุดห่างกัน
+  let selected = [];
+  let minDist = 50;
+
+  top.forEach(p=>{
+    if(selected.every(s=>Math.abs(s.x - p.x) > minDist)){
+      selected.push(p);
+    }
+  });
+
+  if(selected.length < 3){
+    alert("Detect unstable");
+    return;
+  }
+
+  // assign ROI
+  ROIs[0].x = selected[0].x;
+  ROIs[0].y = selected[0].y;
+
+  ROIs[1].x = selected[1].x;
+  ROIs[1].y = selected[1].y;
+
+  ROIs[2].x = selected[2].x;
+  ROIs[2].y = selected[2].y;
+
+  console.log("Auto detect done");
+}
