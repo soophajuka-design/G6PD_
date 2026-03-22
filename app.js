@@ -131,80 +131,101 @@ function capture(){
   document.getElementById('result').innerText =
     `Ratio: ${ratio.toFixed(2)} → ${res}`;
 }
-// ===== AUTO DETECT =====
+// ===== AUTO DETECT (IMPROVED) =====
 function autoDetect(){
   if (!cameraOn || !video.videoWidth) {
     alert("Camera not ready");
     return;
   }
 
-  const canvas=document.getElementById('canvas');
-  const ctx=canvas.getContext('2d');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
 
   // capture frame
   ctx.drawImage(video,0,0,320,320);
+  const data = ctx.getImageData(0,0,320,320).data;
 
-  const imgData = ctx.getImageData(0,0,320,320).data;
+  let points = [];
 
-  let candidates = [];
+  // ===== 1) Sampling + Threshold =====
+  for(let y=0; y<320; y+=6){
+    for(let x=0; x<320; x+=6){
 
-  // scan image (step ลดภาระ CPU)
-  for(let y=0; y<320; y+=10){
-    for(let x=0; x<320; x+=10){
+      let i = (y*320 + x)*4;
 
-      let idx = (y*320 + x)*4;
+      let r = data[i];
+      let g = data[i+1];
+      let b = data[i+2];
 
-      let r = imgData[idx];
-      let g = imgData[idx+1];
-      let b = imgData[idx+2];
+      let sum = r+g+b+1;
+      let f = b/sum;
 
-      let f = b/(r+g+b+1);
-
-      // เก็บเฉพาะจุดสว่าง
-      if(f > 0.4){
-        candidates.push({x,y,f});
+      // ตัด noise: ต้องทั้ง "ฟ้าเด่น" + "สว่างพอ"
+      if(f > 0.45 && b > 60){
+        points.push({x,y,f});
       }
     }
   }
 
-  if(candidates.length < 3){
-    alert("Detect failed");
+  if(points.length < 20){
+    alert("Detect failed (low signal)");
     return;
   }
 
-  // เรียงตามความสว่าง
-  candidates.sort((a,b)=>b.f - a.f);
+  // ===== 2) เลือก top intensity =====
+  points.sort((a,b)=>b.f - a.f);
+  let top = points.slice(0,100);
 
-  // เอา top 3
-  let top = candidates.slice(0,20);
-
-  // จัดกลุ่มโดย x (ซ้าย→ขวา)
+  // ===== 3) K-means clustering (k=3 แบบง่าย) =====
+  // init seeds (ซ้าย กลาง ขวา)
   top.sort((a,b)=>a.x - b.x);
 
-  // เลือก 3 จุดห่างกัน
-  let selected = [];
-  let minDist = 50;
+  let centers = [
+    {...top[0]},
+    {...top[Math.floor(top.length/2)]},
+    {...top[top.length-1]}
+  ];
 
-  top.forEach(p=>{
-    if(selected.every(s=>Math.abs(s.x - p.x) > minDist)){
-      selected.push(p);
+  for(let iter=0; iter<5; iter++){
+    let groups = [[],[],[]];
+
+    top.forEach(p=>{
+      let d0 = Math.abs(p.x - centers[0].x);
+      let d1 = Math.abs(p.x - centers[1].x);
+      let d2 = Math.abs(p.x - centers[2].x);
+
+      let idx = 0;
+      if(d1 < d0 && d1 < d2) idx = 1;
+      else if(d2 < d0 && d2 < d1) idx = 2;
+
+      groups[idx].push(p);
+    });
+
+    // update centroid
+    for(let i=0;i<3;i++){
+      if(groups[i].length === 0) continue;
+
+      let sx=0, sy=0;
+      groups[i].forEach(p=>{
+        sx+=p.x;
+        sy+=p.y;
+      });
+
+      centers[i] = {
+        x: sx/groups[i].length,
+        y: sy/groups[i].length
+      };
     }
-  });
-
-  if(selected.length < 3){
-    alert("Detect unstable");
-    return;
   }
 
-  // assign ROI
-  ROIs[0].x = selected[0].x;
-  ROIs[0].y = selected[0].y;
+  // ===== 4) sort left → right =====
+  centers.sort((a,b)=>a.x - b.x);
 
-  ROIs[1].x = selected[1].x;
-  ROIs[1].y = selected[1].y;
+  // ===== 5) update ROIs =====
+  for(let i=0;i<3;i++){
+    ROIs[i].x = Math.round(centers[i].x);
+    ROIs[i].y = Math.round(centers[i].y);
+  }
 
-  ROIs[2].x = selected[2].x;
-  ROIs[2].y = selected[2].y;
-
-  console.log("Auto detect done");
+  console.log("Auto detect improved done");
 }
