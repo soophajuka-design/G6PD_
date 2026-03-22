@@ -1,11 +1,11 @@
 self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.open('g6pd-cache').then(cache => {
-      return cache.addAll([
-        '/',
-        '/index.html',
-        '/app.js'
-      ]);
-    })
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => caches.delete(k)))
+    )
   );
 });
