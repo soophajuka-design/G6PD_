@@ -44,6 +44,10 @@ const ROIs = [
 function drawOverlay(){
   octx.clearRect(0,0,320,320);
 
+  octx.save();
+  octx.translate(320, 0);
+  octx.scale(-1, 1);
+
   ROIs.forEach((roi,i)=>{
     octx.beginPath();
     octx.arc(roi.x+15, roi.y+15, 20, 0, Math.PI*2);
@@ -52,10 +56,12 @@ function drawOverlay(){
     octx.stroke();
 
     octx.fillStyle="white";
-    octx.font="12px Arial";
     octx.fillText(roi.name, roi.x, roi.y-5);
   });
+
+  octx.restore();
 }
+
 (function loop(){ drawOverlay(); requestAnimationFrame(loop); })();
 
 // ===== FLUORESCENCE =====
@@ -160,8 +166,16 @@ function capture(){
   const canvas=document.getElementById('canvas');
   const ctx=canvas.getContext('2d');
 
-  ctx.drawImage(video,0,0,320,320);
+  //ctx.drawImage(video,0,0,320,320);
+ctx.save();
 
+// flip horizontal
+ctx.translate(320, 0);
+ctx.scale(-1, 1);
+
+ctx.drawImage(video, 0, 0, 320, 320);
+
+ctx.restore();
   let val={};
   ROIs.forEach(r=>{
     val[r.name]=getF(ctx,r.x,r.y);
