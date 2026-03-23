@@ -7,18 +7,35 @@ let stream = null;
 let cameraOn = false;
 
 // ===== CAMERA =====
+
 async function startCamera() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: { ideal: "user" }
+        facingMode: { exact: "environment" } // บังคับกล้องหลัง
       }
     });
+
     video.srcObject = stream;
     cameraOn = true;
     camBtn.innerText = "Stop Camera";
+
   } catch (err) {
-    alert("Camera error: " + err);
+    // fallback (กรณีบางเครื่องไม่รองรับ exact)
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" }
+        }
+      });
+
+      video.srcObject = stream;
+      cameraOn = true;
+      camBtn.innerText = "Stop Camera";
+
+    } catch (err2) {
+      alert("Camera error: " + err2);
+    }
   }
 }
 
