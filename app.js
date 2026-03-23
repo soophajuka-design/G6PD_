@@ -1,235 +1,263 @@
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const octx = overlay.getContext('2d');
-const camBtn = document.getElementById('camBtn');
 
-let stream = null;
-let cameraOn = false;
+let stream=null;
+let cameraOn=false;
 
-// ===== CAMERA =====
+let ROIs=[];
 
-async function startCamera() {
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { exact: "environment" } // บังคับกล้องหลัง
-      }
-    });
+let controlConfig={
+  normalIndex:0,
+  deficientIndex:1
+};
 
-    video.srcObject = stream;
-    cameraOn = true;
-    camBtn.innerText = "Stop Camera";
-
-  } catch (err) {
-    // fallback (กรณีบางเครื่องไม่รองรับ exact)
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" }
-        }
-      });
-
-      video.srcObject = stream;
-      cameraOn = true;
-      camBtn.innerText = "Stop Camera";
-
-    } catch (err2) {
-      alert("Camera error: " + err2);
-    }
-  }
-}
-
-function stopCamera() {
-  if (stream) stream.getTracks().forEach(t => t.stop());
-  video.srcObject = null;
-  cameraOn = false;
-  camBtn.innerText = "Start Camera";
-}
-
-function toggleCamera() {
-  cameraOn ? stopCamera() : startCamera();
-}
-
-// ===== ROI =====
-const ROIs = [
-  {name:"Normal", x:60, y:140},
-  {name:"Sample", x:160, y:140},
-  {name:"Deficient", x:260, y:140}
+// ===== CALIBRATION =====
+let calibrationData=[
+  {F:0.12,A:1},
+  {F:0.25,A:3.5},
+  {F:0.40,A:7},
+  {F:0.65,A:12}
 ];
 
-// ===== OVERLAY =====
-function drawOverlay(){
-  octx.clearRect(0,0,320,320);
+function fitLinear(data){
+  let n=data.length,sumX=0,sumY=0,sumXY=0,sumXX=0;
+  data.forEach(d=>{
+    sumX+=d.F; sumY+=d.A;
+    sumXY+=d.F*d.A;
+    sumXX+=d.F*d.F;
+  });
+  let a=(n*sumXY-sumX*sumY)/(n*sumXX-sumX*sumX);
+  let b=(sumY-a*sumX)/n;
+  return {a,b};
+}
 
-  octx.save();
-  octx.translate(320, 0);
-  octx.scale(-1, 1);
+let model=fitLinear(calibrationData);
 
-  ROIs.forEach((roi,i)=>{
-    octx.beginPath();
-    octx.arc(roi.x+15, roi.y+15, 20, 0, Math.PI*2);
-    octx.strokeStyle = ["#00ff00","#ffff00","#ff0000"][i];
-    octx.lineWidth = 3;
-    octx.stroke();
+function getActivity(F){
+  let A=model.a*F+model.b;
+  return A<0?0:A;
+}
 
-    octx.fillStyle="white";
-    octx.fillText(roi.name, roi.x, roi.y-5);
+// ===== CAMERA =====
+async function startCamera(){
+  stream = await navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:{ideal:"environment"} }
+  });
+  video.srcObject=stream;
+  cameraOn=true;
+}
+
+function stopCamera(){
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  cameraOn=false;
+}
+
+function toggleCamera(){
+  cameraOn?stopCamera():startCamera();
+}
+
+// ===== EDGE + CORNER =====
+function detectCorners(ctx){
+  let img=ctx.getImageData(0,0,320,320).data;
+  let edges=[];
+
+  for(let y=1;y<319;y+=2){
+    for(let x=1;x<319;x+=2){
+      let i=(y*320+x)*4;
+      let gx=img[i]-img[i-4];
+      let gy=img[i]-img[i-320*4];
+      let mag=Math.abs(gx)+Math.abs(gy);
+      if(mag>50) edges.push({x,y});
+    }
+  }
+
+  let TL,TR,BL,BR;
+  let minSum=1e9,maxSum=-1e9,minDiff=1e9,maxDiff=-1e9;
+
+  edges.forEach(p=>{
+    let s=p.x+p.y;
+    let d=p.x-p.y;
+
+    if(s<minSum){minSum=s;TL=p;}
+    if(s>maxSum){maxSum=s;BR=p;}
+    if(d<minDiff){minDiff=d;BL=p;}
+    if(d>maxDiff){maxDiff=d;TR=p;}
   });
 
-  octx.restore();
+  return [TL,TR,BR,BL];
 }
 
-(function loop(){ drawOverlay(); requestAnimationFrame(loop); })();
-
-// ===== FLUORESCENCE =====
-function getF(ctx,x,y){
-  let size=30;
-  let d=ctx.getImageData(x,y,size,size).data;
-
-  let r=0,g=0,b=0,c=0;
-  for(let i=0;i<d.length;i+=4){
-    r+=d[i]; g+=d[i+1]; b+=d[i+2]; c++;
+// ===== HOMOGRAPHY =====
+function computeHomography(src,dst){
+  let A=[];
+  for(let i=0;i<4;i++){
+    let x=src[i].x,y=src[i].y,u=dst[i].x,v=dst[i].y;
+    A.push([-x,-y,-1,0,0,0,x*u,y*u,u]);
+    A.push([0,0,0,-x,-y,-1,x*v,y*v,v]);
   }
-  if(c===0) return 0;
 
-  r/=c; g/=c; b/=c;
+  for(let i=0;i<8;i++){
+    for(let k=i+1;k<8;k++){
+      if(Math.abs(A[k][i])>Math.abs(A[i][i])){
+        [A[i],A[k]]=[A[k],A[i]];
+      }
+    }
+    for(let k=i+1;k<8;k++){
+      let f=A[k][i]/A[i][i];
+      for(let j=i;j<9;j++){
+        A[k][j]-=A[i][j]*f;
+      }
+    }
+  }
 
-  let sum = r+g+b+1;
-  let f1 = b/sum;
-  let f2 = (b-(r+g)/2)/sum;
-
-  return (f1*0.7 + f2*0.3);
+  let h=new Array(9).fill(0);
+  for(let i=7;i>=0;i--){
+    let sum=A[i][8];
+    for(let j=i+1;j<8;j++) sum-=A[i][j]*h[j];
+    h[i]=sum/A[i][i];
+  }
+  h[8]=1;
+  return h;
 }
 
-// ===== AUTO DETECT (IMPROVED) =====
-function autoDetect(){
-  if (!cameraOn || !video.videoWidth) {
-    alert("Camera not ready");
-    return;
+function applyHomography(ctx,h){
+  let src=ctx.getImageData(0,0,320,320);
+  let dst=ctx.createImageData(320,320);
+
+  for(let y=0;y<320;y++){
+    for(let x=0;x<320;x++){
+      let d=h[6]*x+h[7]*y+1;
+      let sx=(h[0]*x+h[1]*y+h[2])/d;
+      let sy=(h[3]*x+h[4]*y+h[5])/d;
+
+      sx=Math.floor(sx);
+      sy=Math.floor(sy);
+
+      if(sx>=0&&sy>=0&&sx<320&&sy<320){
+        let si=(sy*320+sx)*4;
+        let di=(y*320+x)*4;
+
+        dst.data[di]=src.data[si];
+        dst.data[di+1]=src.data[si+1];
+        dst.data[di+2]=src.data[si+2];
+        dst.data[di+3]=255;
+      }
+    }
   }
+
+  ctx.putImageData(dst,0,0);
+}
+
+// ===== GRID =====
+function detectGrid(){
 
   const canvas=document.getElementById('canvas');
   const ctx=canvas.getContext('2d');
 
   ctx.drawImage(video,0,0,320,320);
-  const data = ctx.getImageData(0,0,320,320).data;
 
-  let pts=[];
+  let corners=detectCorners(ctx);
 
-  for(let y=0;y<320;y+=6){
-    for(let x=0;x<320;x+=6){
-      let i=(y*320+x)*4;
-      let r=data[i], g=data[i+1], b=data[i+2];
-      let f=b/(r+g+b+1);
+  let H=computeHomography(corners,[
+    {x:0,y:0},{x:320,y:0},{x:320,y:320},{x:0,y:320}
+  ]);
 
-      if(f>0.45 && b>60){
-        pts.push({x,y,f});
-      }
+  applyHomography(ctx,H);
+
+  // simple grid 4x4
+  ROIs=[];
+  for(let r=0;r<4;r++){
+    for(let c=0;c<4;c++){
+      ROIs.push({
+        x:40+c*70,
+        y:40+r*70
+      });
     }
-  }
-
-  if(pts.length<20){
-    alert("Detect failed");
-    return;
-  }
-
-  pts.sort((a,b)=>b.f-a.f);
-  let top=pts.slice(0,100);
-  top.sort((a,b)=>a.x-b.x);
-
-  let centers=[
-    {...top[0]},
-    {...top[Math.floor(top.length/2)]},
-    {...top[top.length-1]}
-  ];
-
-  for(let k=0;k<5;k++){
-    let g=[[],[],[]];
-
-    top.forEach(p=>{
-      let d0=Math.abs(p.x-centers[0].x);
-      let d1=Math.abs(p.x-centers[1].x);
-      let d2=Math.abs(p.x-centers[2].x);
-
-      let idx=0;
-      if(d1<d0&&d1<d2) idx=1;
-      else if(d2<d0&&d2<d1) idx=2;
-
-      g[idx].push(p);
-    });
-
-    for(let i=0;i<3;i++){
-      if(g[i].length===0) continue;
-      let sx=0, sy=0;
-      g[i].forEach(p=>{sx+=p.x; sy+=p.y;});
-      centers[i]={x:sx/g[i].length,y:sy/g[i].length};
-    }
-  }
-
-  centers.sort((a,b)=>a.x-b.x);
-
-  for(let i=0;i<3;i++){
-    ROIs[i].x=Math.round(centers[i].x);
-    ROIs[i].y=Math.round(centers[i].y);
   }
 }
 
-// ===== CAPTURE + QC =====
-function capture(){
+// ===== FLUO =====
+function getF(ctx,x,y){
+  let d=ctx.getImageData(x,y,30,30).data;
+  let r=0,g=0,b=0,c=0;
 
-  if(!cameraOn){ alert("Start camera first"); return; }
-  if(!video.videoWidth){ alert("Camera not ready"); return; }
+  for(let i=0;i<d.length;i+=4){
+    r+=d[i]; g+=d[i+1]; b+=d[i+2]; c++;
+  }
+
+  r/=c; g/=c; b/=c;
+  let sum=r+g+b+1;
+  return (b/sum);
+}
+
+// ===== ND =====
+function isEmpty(ctx,x,y){
+  let d=ctx.getImageData(x,y,30,30).data;
+  let sum=0;
+
+  for(let i=0;i<d.length;i+=4){
+    sum+=d[i]+d[i+1]+d[i+2];
+  }
+
+  return (sum/d.length)>200;
+}
+
+// ===== CONTROL =====
+function setControl(){
+  controlConfig.normalIndex=parseInt(normalIdx.value);
+  controlConfig.deficientIndex=parseInt(defIdx.value);
+}
+
+// ===== CAPTURE =====
+function capture(){
 
   const canvas=document.getElementById('canvas');
   const ctx=canvas.getContext('2d');
 
-  //ctx.drawImage(video,0,0,320,320);
-ctx.save();
+  ctx.drawImage(video,0,0,320,320);
 
-// flip horizontal
-ctx.translate(320, 0);
-ctx.scale(-1, 1);
+  let out="";
 
-ctx.drawImage(video, 0, 0, 320, 320);
+  let Fn=0,Fd=0;
 
-ctx.restore();
-  let val={};
-  ROIs.forEach(r=>{
-    val[r.name]=getF(ctx,r.x,r.y);
+  ROIs.forEach((r,i)=>{
+
+    if(isEmpty(ctx,r.x,r.y)){
+      out+=`Spot ${i}: ND\n\n`;
+      return;
+    }
+
+    let F=getF(ctx,r.x,r.y);
+
+    if(i===controlConfig.normalIndex) Fn=F;
+    if(i===controlConfig.deficientIndex) Fd=F;
+
+    let Fnrm=(F-Fd)/((Fn-Fd)+0.001);
+
+    let A=getActivity(Fnrm);
+
+    let res = A>=7?"Normal":A>=3?"Partial":"Deficient";
+
+    out+=`Spot ${i}
+F=${F.toFixed(2)}
+Activity=${A.toFixed(2)}
+Result=${res}\n\n`;
   });
 
-  let Fn=val.Normal;
-  let Fs=val.Sample;
-  let Fd=val.Deficient;
-
-  let ratio=(Fs-Fd)/((Fn-Fd)+0.001);
-
-  let sampleResult="Complete Deficient";
-  if(ratio>0.8) sampleResult="Normal";
-  else if(ratio>0.4) sampleResult="Partial Deficient";
-
-  let normalCtrl = (Fn>0.5)?"Pass":"Fail";
-  let deficientCtrl = (Fd<0.2)?"Pass":"Fail";
-  let delta = Fn-Fd;
-  let validSignal = (delta>0.25);
-
-  let validity="VALID";
-  if(normalCtrl==="Fail"||deficientCtrl==="Fail"||!validSignal){
-    validity="INVALID";
-  }
-
-  if(validity==="INVALID"){
-    alert("Invalid test run กรุณาทดสอบใหม่");
-    return;
-  }
-
-  document.getElementById('result').innerText =
-`Sample: ${sampleResult}
-Ratio: ${ratio.toFixed(2)}
-
-Normal Ctrl: ${normalCtrl}
-Deficient Ctrl: ${deficientCtrl}
-Δ Signal: ${delta.toFixed(2)}
-
-Result: ${validity}`;
+  document.getElementById('result').innerText=out;
 }
+
+// ===== overlay =====
+function drawOverlay(){
+  octx.clearRect(0,0,320,320);
+
+  ROIs.forEach((r,i)=>{
+    octx.beginPath();
+    octx.arc(r.x,r.y,20,0,Math.PI*2);
+    octx.strokeStyle="yellow";
+    octx.stroke();
+    octx.fillText(i,r.x,r.y);
+  });
+}
+(function loop(){drawOverlay();requestAnimationFrame(loop);})();
