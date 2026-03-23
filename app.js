@@ -48,37 +48,22 @@ let cameraOn = false;
 
 async function startCamera(){
 
-  if(!navigator.mediaDevices){
-    alert("ต้องเปิดผ่าน HTTPS");
-    return;
-  }
-
   try{
 
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: 640,
-        height: 480
-      },
-      audio:false
+    const s = await navigator.mediaDevices.getUserMedia({
+      video: true
     });
 
-    video.srcObject = stream;
-
-    await video.play().catch(e=>{
-      console.log("play error", e);
-    });
+    video.srcObject = s;
 
     cameraOn = true;
-    camBtn.innerText = "Stop Camera";
 
     console.log("Camera OK");
 
   }catch(e){
-
-    alert("Camera ERROR: " + e.message);
-    console.error(e);
+    alert("Camera error: " + e.message);
   }
+
 }
 
 // ===== STOP CAMERA =====
