@@ -3,68 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>G6PD Analyzer (Stable)</title>
+<title>G6PD Analyzer</title>
 
-<style>
-html, body {
-  margin:0; padding:0;
-  background:black; color:white;
-  font-family:Arial;
-  text-align:center;
-}
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
 
-/* กล่องสี่เหลี่ยมจัตุรัส สมมาตร */
-.container{
-  position:relative;
-  width:95vw;
-  max-width:420px;
-  aspect-ratio:1/1;
-  margin:10px auto;
-  background:#000;
-  overflow:hidden;
-}
-
-/* video */
-video{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  background:black;
-}
-
-/* overlay */
-canvas.overlay{
-  position:absolute;
-  top:0; left:0;
-  width:100%; height:100%;
-}
-
-/* ปุ่ม */
-button{
-  margin:6px;
-  padding:10px 14px;
-  font-size:16px;
-}
-
-/* debug */
-#debug{
-  font-size:12px;
-  text-align:left;
-  width:90%;
-  margin:10px auto;
-  white-space:pre-wrap;
-  color:#0f0;
-}
-</style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer (Stable)</h3>
+<h3>G6PD Analyzer</h3>
 
 <div class="container">
   <video id="video" autoplay playsinline muted webkit-playsinline></video>
-  <canvas id="overlay" class="overlay"></canvas>
+  <canvas id="overlay"></canvas>
 </div>
 
 <button id="camBtn">Start Camera</button>
@@ -72,6 +24,12 @@ button{
 <pre id="debug"></pre>
 
 <script src="app.js"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
 
 </body>
 </html>
