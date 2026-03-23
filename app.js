@@ -40,29 +40,36 @@ function getActivity(F){
   return A<0?0:A;
 }
 
+const video = document.getElementById('video');
+const camBtn = document.getElementById('camBtn');
+
 let stream = null;
 let cameraOn = false;
 
 // ===== START CAMERA =====
 async function startCamera(){
 
-  try{
+  if(!navigator.mediaDevices){
+    alert("Camera not supported (ต้องใช้ HTTPS)");
+    return;
+  }
 
+  try{
     stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: { ideal: "environment" }
+        facingMode: "environment"
       },
-      audio: false
+      audio:false
     });
 
   }catch(e){
 
-    console.log("Back camera failed, fallback", e);
+    console.log("Fallback camera", e);
 
     try{
       stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false
+        video:true,
+        audio:false
       });
     }catch(err){
       alert("Camera error: " + err.message);
@@ -72,31 +79,33 @@ async function startCamera(){
 
   video.srcObject = stream;
 
-  await video.play();
+  video.onloadedmetadata = () => {
+    video.play();
+  };
 
   cameraOn = true;
   camBtn.innerText = "Stop Camera";
 
-  console.log("Camera started");
+  console.log("Camera ON");
 }
 
 // ===== STOP CAMERA =====
 function stopCamera(){
 
   if(stream){
-    stream.getTracks().forEach(track => track.stop());
+    stream.getTracks().forEach(t=>t.stop());
   }
 
   video.srcObject = null;
-
   cameraOn = false;
+
   camBtn.innerText = "Start Camera";
 
-  console.log("Camera stopped");
+  console.log("Camera OFF");
 }
 
-// ===== BUTTON CONTROL =====
-camBtn.addEventListener("click", async () => {
+// ===== BUTTON =====
+camBtn.addEventListener("click", async ()=>{
 
   if(!cameraOn){
     await startCamera();
