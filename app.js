@@ -135,3 +135,176 @@ function drawLoop(){
   drawOverlay();
   requestAnimationFrame(drawLoop);
 }
+function captureFrame(){
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.drawImage(video, 0, 0);
+
+  return canvas;
+}
+function detectGrid(){
+
+  const canvas = captureFrame();
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+
+  const data = img.data;
+  const points = [];
+
+  // ===== scan pixel =====
+  for(let y=0; y<canvas.height; y+=6){
+    for(let x=0; x<canvas.width; x+=6){
+
+      const i = (y*canvas.width + x)*4;
+
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
+
+      const brightness = (r+g+b)/3;
+
+      // ===== threshold (ปรับได้) =====
+      if(brightness > 180){
+        points.push({x,y});
+      }
+
+    }
+  }
+
+  debug("Bright points: " + points.length);
+
+  const grid = clusterPoints(points);
+
+  drawGrid(grid);
+
+  window.detectedGrid = grid;
+}
+
+function clusterPoints(points){
+
+  const clusters = [];
+  const dist = 25;
+
+  points.forEach(p=>{
+
+    let found = false;
+
+    for(let c of clusters){
+
+      const dx = c.x - p.x;
+      const dy = c.y - p.y;
+
+      if(Math.sqrt(dx*dx + dy*dy) < dist){
+        c.x = (c.x + p.x)/2;
+        c.y = (c.y + p.y)/2;
+        c.count++;
+        found = true;
+        break;
+      }
+    }
+
+    if(!found){
+      clusters.push({x:p.x, y:p.y, count:1});
+    }
+
+  });
+
+  debug("Clusters: " + clusters.length);
+
+  return clusters;
+}
+
+function drawGrid(grid){
+
+  ctx.strokeStyle = "red";
+  ctx.fillStyle = "yellow";
+
+  grid.forEach((p,i)=>{
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 15, 0, Math.PI*2);
+    ctx.stroke();
+
+    ctx.fillText(i, p.x+5, p.y+5);
+
+  });
+
+}
+
+function readRGB(){
+
+  if(!window.detectedGrid){
+    alert("ยังไม่ detect grid");
+    return;
+  }
+
+  const canvas = captureFrame();
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+
+  const results = [];
+
+  window.detectedGrid.forEach((p,i)=>{
+
+    const size = 10;
+    let r=0,g=0,b=0,count=0;
+
+    for(let y=-size; y<size; y++){
+      for(let x=-size; x<size; x++){
+
+        const px = Math.floor(p.x + x);
+        const py = Math.floor(p.y + y);
+
+        const idx = (py*canvas.width + px)*4;
+
+        r += img.data[idx];
+        g += img.data[idx+1];
+        b += img.data[idx+2];
+        count++;
+
+      }
+    }
+
+    r/=count; g/=count; b/=count;
+
+    const brightness = (r+g+b)/3;
+
+    let status = "OK";
+
+    // ===== ND detect =====
+    if(brightness < 40){
+      status = "ND";
+    }
+
+    results.push({
+      index:i,
+      r:Math.round(r),
+      g:Math.round(g),
+      b:Math.round(b),
+      brightness:Math.round(brightness),
+      status
+    });
+
+  });
+
+  showResults(results);
+}
+
+function showResults(results){
+
+  let txt = "";
+
+  results.forEach(r=>{
+
+    txt += `#${r.index} | RGB(${r.r},${r.g},${r.b}) | B=${r.brightness} | ${r.status}\n`;
+
+  });
+
+  document.getElementById("debug").innerText = txt;
+}
+
