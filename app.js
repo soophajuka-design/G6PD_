@@ -41,11 +41,40 @@ function getActivity(F){
 
 // ===== CAMERA =====
 async function startCamera(){
-  stream = await navigator.mediaDevices.getUserMedia({
-    video:{ facingMode:{ideal:"environment"} }
-  });
-  video.srcObject=stream;
-  cameraOn=true;
+
+  try{
+
+    // ===== TRY BACK CAMERA =====
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{
+        facingMode:{ ideal:"environment" }
+      },
+      audio:false
+    });
+
+  }catch(e){
+
+    console.log("Back camera failed, try any camera", e);
+
+    try{
+      // ===== FALLBACK =====
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:true,
+        audio:false
+      });
+    }catch(err){
+      alert("Camera error: " + err.message);
+      return;
+    }
+  }
+
+  video.srcObject = stream;
+
+  video.onloadedmetadata = () => {
+    video.play();
+  };
+
+  cameraOn = true;
 }
 
 function stopCamera(){
