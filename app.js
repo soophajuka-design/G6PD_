@@ -1,6 +1,7 @@
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const octx = overlay.getContext('2d');
+const camBtn = document.getElementById('camBtn');
 
 let stream=null;
 let cameraOn=false;
@@ -39,28 +40,29 @@ function getActivity(F){
   return A<0?0:A;
 }
 
-// ===== CAMERA =====
+let stream = null;
+let cameraOn = false;
+
+// ===== START CAMERA =====
 async function startCamera(){
 
   try{
 
-    // ===== TRY BACK CAMERA =====
     stream = await navigator.mediaDevices.getUserMedia({
-      video:{
-        facingMode:{ ideal:"environment" }
+      video: {
+        facingMode: { ideal: "environment" }
       },
-      audio:false
+      audio: false
     });
 
   }catch(e){
 
-    console.log("Back camera failed, try any camera", e);
+    console.log("Back camera failed, fallback", e);
 
     try{
-      // ===== FALLBACK =====
       stream = await navigator.mediaDevices.getUserMedia({
-        video:true,
-        audio:false
+        video: true,
+        audio: false
       });
     }catch(err){
       alert("Camera error: " + err.message);
@@ -70,21 +72,39 @@ async function startCamera(){
 
   video.srcObject = stream;
 
-  video.onloadedmetadata = () => {
-    video.play();
-  };
+  await video.play();
 
   cameraOn = true;
+  camBtn.innerText = "Stop Camera";
+
+  console.log("Camera started");
 }
 
+// ===== STOP CAMERA =====
 function stopCamera(){
-  if(stream) stream.getTracks().forEach(t=>t.stop());
-  cameraOn=false;
+
+  if(stream){
+    stream.getTracks().forEach(track => track.stop());
+  }
+
+  video.srcObject = null;
+
+  cameraOn = false;
+  camBtn.innerText = "Start Camera";
+
+  console.log("Camera stopped");
 }
 
-function toggleCamera(){
-  cameraOn?stopCamera():startCamera();
-}
+// ===== BUTTON CONTROL =====
+camBtn.addEventListener("click", async () => {
+
+  if(!cameraOn){
+    await startCamera();
+  }else{
+    stopCamera();
+  }
+
+});
 
 // ===== EDGE + CORNER =====
 function detectCorners(ctx){
