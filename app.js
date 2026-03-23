@@ -443,3 +443,167 @@ function processPaper(){
 
   window.rectifiedCanvas = rectified;
 }
+
+function getWorkingCanvas(){
+  if(window.rectifiedCanvas){
+    return window.rectifiedCanvas;
+  }
+  return captureFrame();
+}
+function generateGrid(){
+
+  const canvas = getWorkingCanvas();
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const rows = 3;     // ปรับตามจริง
+  const cols = 4;     // ปรับตามจริง
+
+  const grid = [];
+
+  const marginX = W * 0.1;
+  const marginY = H * 0.1;
+
+  const stepX = (W - marginX*2) / (cols-1);
+  const stepY = (H - marginY*2) / (rows-1);
+
+  let idx = 0;
+
+  for(let r=0; r<rows; r++){
+    for(let c=0; c<cols; c++){
+
+      grid.push({
+        index: idx++,
+        x: marginX + c*stepX,
+        y: marginY + r*stepY
+      });
+
+    }
+  }
+
+  window.grid = grid;
+
+  drawGridOverlay(grid);
+}
+function drawGridOverlay(grid){
+
+  const canvas = overlay;
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.strokeStyle = "red";
+  ctx.fillStyle = "yellow";
+  ctx.font = "16px Arial";
+
+  grid.forEach(p=>{
+
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 12, 0, Math.PI*2);
+    ctx.stroke();
+
+    ctx.fillText(p.index, p.x+5, p.y+5);
+
+  });
+
+}
+function readG6PD(){
+
+  const canvas = getWorkingCanvas();
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+
+  const results = [];
+
+  grid.forEach(p=>{
+
+    let r=0,g=0,b=0,count=0;
+    const size = 8;
+
+    for(let y=-size; y<size; y++){
+      for(let x=-size; x<size; x++){
+
+        const px = Math.floor(p.x + x);
+        const py = Math.floor(p.y + y);
+
+        const i = (py*canvas.width + px)*4;
+
+        r += img.data[i];
+        g += img.data[i+1];
+        b += img.data[i+2];
+        count++;
+
+      }
+    }
+
+    r/=count; g/=count; b/=count;
+
+    const brightness = (r+g+b)/3;
+
+    let status = "OK";
+    if(brightness < 40) status = "ND";
+
+    results.push({
+      index:p.index,
+      r,g,b,
+      brightness,
+      status
+    });
+
+  });
+
+  window.results = results;
+
+  analyzeG6PD(results);
+}
+function analyzeG6PD(results){
+
+  const normalIdx = parseInt(document.getElementById("normalIdx")?.value || 0);
+  const defIdx = parseInt(document.getElementById("defIdx")?.value || 1);
+
+  const normal = results[normalIdx]?.brightness;
+  const deficient = results[defIdx]?.brightness;
+
+  if(!normal || !deficient){
+    alert("Control ไม่ครบ");
+    return;
+  }
+
+  let txt = "";
+
+  let validity = "VALID";
+
+  results.forEach(r=>{
+
+    let res = "ND";
+
+    if(r.status !== "ND"){
+
+      let ratio = (r.brightness - deficient) /
+                  ((normal - deficient) + 0.001);
+
+      if(ratio > 0.8) res = "Normal";
+      else if(ratio > 0.4) res = "Partial Deficient";
+      else res = "Complete Deficient";
+
+      // ===== validate control =====
+      if(r.index === normalIdx && res !== "Normal") validity="INVALID";
+      if(r.index === defIdx && res !== "Complete Deficient") validity="INVALID";
+    }
+
+    txt += `#${r.index} → ${res} (B=${Math.round(r.brightness)})\n`;
+
+  });
+
+  txt += "\n=== RESULT: " + validity + " ===";
+
+  document.getElementById("debug").innerText = txt;
+
+  if(validity==="INVALID"){
+    alert("Invalid test run กรุณาทดสอบใหม่");
+  }
+}
