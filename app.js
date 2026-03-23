@@ -307,4 +307,139 @@ function showResults(results){
 
   document.getElementById("debug").innerText = txt;
 }
+function getEdges(canvas){
 
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const data = img.data;
+
+  const edges = [];
+
+  for(let y=1; y<canvas.height-1; y+=2){
+    for(let x=1; x<canvas.width-1; x+=2){
+
+      const i = (y*canvas.width + x)*4;
+
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
+
+      const brightness = (r+g+b)/3;
+
+      const i2 = ((y+1)*canvas.width + (x+1))*4;
+      const b2 = (data[i2]+data[i2+1]+data[i2+2])/3;
+
+      if(Math.abs(brightness - b2) > 40){
+        edges.push({x,y});
+      }
+
+    }
+  }
+
+  debug("Edges: " + edges.length);
+  return edges;
+}
+function getCorners(points){
+
+  let tl, tr, bl, br;
+
+  let minSum=999999, maxSum=0;
+  let minDiff=999999, maxDiff=-999999;
+
+  points.forEach(p=>{
+
+    const sum = p.x + p.y;
+    const diff = p.x - p.y;
+
+    if(sum < minSum){ minSum=sum; tl=p; }
+    if(sum > maxSum){ maxSum=sum; br=p; }
+
+    if(diff < minDiff){ minDiff=diff; bl=p; }
+    if(diff > maxDiff){ maxDiff=diff; tr=p; }
+
+  });
+
+  return [tl, tr, br, bl];
+}
+
+function warpPerspective(srcCanvas, corners){
+
+  const dstCanvas = document.createElement("canvas");
+  const ctx = dstCanvas.getContext("2d");
+
+  // ===== scale จริง (cm → pixel) =====
+  const W = 350;   // 7 cm
+  const H = 630;   // 12.6 cm
+
+  dstCanvas.width = W;
+  dstCanvas.height = H;
+
+  const srcCtx = srcCanvas.getContext("2d");
+  const src = srcCtx.getImageData(0,0,srcCanvas.width,srcCanvas.height);
+  const dst = ctx.createImageData(W,H);
+
+  const [tl,tr,br,bl] = corners;
+
+  for(let y=0; y<H; y++){
+    for(let x=0; x<W; x++){
+
+      const u = x / W;
+      const v = y / H;
+
+      // bilinear mapping
+      const sx =
+        (1-u)*(1-v)*tl.x +
+        u*(1-v)*tr.x +
+        u*v*br.x +
+        (1-u)*v*bl.x;
+
+      const sy =
+        (1-u)*(1-v)*tl.y +
+        u*(1-v)*tr.y +
+        u*v*br.y +
+        (1-u)*v*bl.y;
+
+      const ix = Math.floor(sx);
+      const iy = Math.floor(sy);
+
+      const si = (iy*srcCanvas.width + ix)*4;
+      const di = (y*W + x)*4;
+
+      dst.data[di] = src.data[si];
+      dst.data[di+1] = src.data[si+1];
+      dst.data[di+2] = src.data[si+2];
+      dst.data[di+3] = 255;
+
+    }
+  }
+
+  ctx.putImageData(dst,0,0);
+
+  return dstCanvas;
+}
+
+function processPaper(){
+
+  const src = captureFrame();
+
+  // 1) edges
+  const edges = getEdges(src);
+
+  // 2) corners
+  const corners = getCorners(edges);
+
+  if(!corners || corners.length < 4){
+    alert("หาแผ่นไม่เจอ");
+    return;
+  }
+
+  debug("Corners detected");
+
+  // 3) warp
+  const rectified = warpPerspective(src, corners);
+
+  // แสดงผล
+  document.body.appendChild(rectified);
+
+  window.rectifiedCanvas = rectified;
+}
