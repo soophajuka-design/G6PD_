@@ -40,11 +40,6 @@ function getActivity(F){
   return A<0?0:A;
 }
 
-const video = document.getElementById('video');
-const camBtn = document.getElementById('camBtn');
-
-let stream = null;
-let cameraOn = false;
 
 async function startCamera(){
 
