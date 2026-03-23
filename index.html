@@ -1,112 +1,77 @@
 <!DOCTYPE html>
 <html>
-<video id="video" autoplay playsinline muted webkit-playsinline></video>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>G6PD Analyzer Pro</title>
-
-<link rel="manifest" href="manifest.json">
+<title>G6PD Analyzer (Stable)</title>
 
 <style>
 html, body {
-  margin:0;
-  padding:0;
-  background:black;
-  color:white;
+  margin:0; padding:0;
+  background:black; color:white;
   font-family:Arial;
-  height:100%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-start;
+  text-align:center;
 }
 
-/* ===== CONTAINER ===== */
-.container {
+/* กล่องสี่เหลี่ยมจัตุรัส สมมาตร */
+.container{
   position:relative;
-  width:100vw;
-  max-width:500px;
-  aspect-ratio: 1 / 1;
-  margin-top:10px;
+  width:95vw;
+  max-width:420px;
+  aspect-ratio:1/1;
+  margin:10px auto;
+  background:#000;
+  overflow:hidden;
 }
 
-/* ===== VIDEO ===== */
-video {
+/* video */
+video{
   width:100%;
   height:100%;
-  object-fit:cover; /* สำคัญ: เติมเต็ม + สมมาตร */
+  object-fit:cover;
   background:black;
 }
 
-/* ===== OVERLAY ===== */
-canvas.overlay {
+/* overlay */
+canvas.overlay{
   position:absolute;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
+  top:0; left:0;
+  width:100%; height:100%;
 }
 
-/* ===== BUTTON AREA ===== */
-.controls {
-  margin-top:10px;
-  display:flex;
-  flex-wrap:wrap;
-  justify-content:center;
-}
-
-/* ===== BUTTON ===== */
-button {
-  margin:5px;
-  padding:10px;
+/* ปุ่ม */
+button{
+  margin:6px;
+  padding:10px 14px;
   font-size:16px;
 }
 
-/* ===== RESULT ===== */
-#result {
-  width:90%;
-  max-width:500px;
+/* debug */
+#debug{
+  font-size:12px;
   text-align:left;
+  width:90%;
+  margin:10px auto;
   white-space:pre-wrap;
+  color:#0f0;
 }
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer</h3>
+<h3>G6PD Analyzer (Stable)</h3>
 
 <div class="container">
-  <video id="video" playsinline muted></video>
+  <video id="video" autoplay playsinline muted webkit-playsinline></video>
   <canvas id="overlay" class="overlay"></canvas>
 </div>
 
-<div class="controls">
-  <button id="camBtn">Start Camera</button>
-  <button onclick="detectGrid()">Auto Grid</button>
-  <button onclick="capture()">Capture</button>
-</div>
+<button id="camBtn">Start Camera</button>
 
-<div class="controls">
-  Normal:
-  <input id="normalIdx" type="number" value="0" style="width:60px">
-  Deficient:
-  <input id="defIdx" type="number" value="1" style="width:60px">
-  <button onclick="setControl()">Set</button>
-</div>
-
-<canvas id="canvas" width="320" height="320" style="display:none"></canvas>
-
-<pre id="result"></pre>
+<pre id="debug"></pre>
 
 <script src="app.js"></script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
-</script>
 
 </body>
 </html>
