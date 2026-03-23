@@ -13,46 +13,34 @@ function debug(msg){
 // ===== START CAMERA =====
 async function startCamera(){
 
-  debug("Start camera...");
-  debug("mediaDevices: " + !!navigator.mediaDevices);
-
-  if(!navigator.mediaDevices){
-    alert("❌ ต้องเปิดผ่าน HTTPS");
-    return;
-  }
-
   try{
 
-    // ===== SAFE MODE (สำคัญมาก) =====
+    // ===== TRY BACK CAMERA =====
     stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: false
+      video: {
+        facingMode: { ideal: "environment" }
+      },
+      audio:false
     });
-
-    debug("Stream OK");
 
   }catch(e){
 
-    debug("ERROR getUserMedia: " + e.message);
-    alert("Camera error: " + e.message);
-    return;
+    debug("Fallback camera");
+
+    // ===== FALLBACK =====
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:true
+    });
   }
 
   video.srcObject = stream;
 
-  // ===== สำคัญ (iPad) =====
   video.onloadedmetadata = () => {
-    video.play().then(()=>{
-      debug("Video playing");
-    }).catch(e=>{
-      debug("Play error: " + e.message);
-    });
+    video.play();
   };
 
   cameraOn = true;
   camBtn.innerText = "Stop Camera";
-
-  debug("Camera ON");
 }
 
 // ===== STOP =====
