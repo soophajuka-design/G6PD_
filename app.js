@@ -9,7 +9,11 @@ let cameraOn = false;
 // ===== CAMERA =====
 async function startCamera() {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "user" }
+      }
+    });
     video.srcObject = stream;
     cameraOn = true;
     camBtn.innerText = "Stop Camera";
