@@ -46,47 +46,35 @@ const camBtn = document.getElementById('camBtn');
 let stream = null;
 let cameraOn = false;
 
-// ===== START CAMERA =====
 async function startCamera(){
 
   if(!navigator.mediaDevices){
-    alert("Camera not supported (ต้องใช้ HTTPS)");
+    alert("❌ ต้องเปิดผ่าน HTTPS");
     return;
   }
 
   try{
+
+    // ไม่ specify อะไรเลย (กันพัง)
     stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "environment"
-      },
-      audio:false
+      video: true,
+      audio: false
     });
+
+    video.srcObject = stream;
+
+    await video.play();
+
+    cameraOn = true;
+    camBtn.innerText = "Stop Camera";
+
+    console.log("Camera OK");
 
   }catch(e){
 
-    console.log("Fallback camera", e);
-
-    try{
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:true,
-        audio:false
-      });
-    }catch(err){
-      alert("Camera error: " + err.message);
-      return;
-    }
+    alert("Camera ERROR:\n" + e.message);
+    console.error(e);
   }
-
-  video.srcObject = stream;
-
-  video.onloadedmetadata = () => {
-    video.play();
-  };
-
-  cameraOn = true;
-  camBtn.innerText = "Stop Camera";
-
-  console.log("Camera ON");
 }
 
 // ===== STOP CAMERA =====
