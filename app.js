@@ -1,36 +1,36 @@
 const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
+const viewer = document.getElementById("viewer");
 const resultBox = document.getElementById("result");
 
-let stream = null;
-let samples = [];
+let stream=null;
+let samples=[];
+let cachedFrame=null;
+let cachedGray=null;
 
-const MAX_SAMPLES = 20;
-const SAMPLE_RADIUS = 25;
+let isCaptured=false;
+let control={normal:null,deficient:null};
 
-let cachedFrame = null;
-let cachedGray = null;
-
-let control = { normal:null, deficient:null };
-let selectMode = null;
+const SAMPLE_RADIUS=25;
+const MAX_SAMPLES=20;
 
 // ===== CAMERA =====
 async function startCamera(){
-  setTimeout(()=>{
-  resultBox.textContent = "📷 พร้อม capture";
-}, 800);
-  
+
+  isCaptured=false;
+
   stream = await navigator.mediaDevices.getUserMedia({
-    video:{ facingMode:{ ideal:"environment" } }
+    video:{ facingMode:{ ideal:"environment"} }
   });
 
-  video.srcObject = stream;
+  video.srcObject=stream;
 
-  video.onloadedmetadata = ()=>{
-  console.log("video size:", video.videoWidth, video.videoHeight);
-  video.play();
-  syncCanvas();
-};
+  video.onloadedmetadata=()=>{
+    video.play();
+    syncCanvas();
+  };
+
+  resultBox.textContent="📷 Camera ready";
 }
 
 function stopCamera(){
@@ -38,156 +38,50 @@ function stopCamera(){
     stream.getTracks().forEach(t=>t.stop());
     stream=null;
   }
+  video.srcObject=null;
 }
 
 // ===== SYNC =====
 function syncCanvas(){
-  const rect = video.getBoundingClientRect();
-  overlay.width = rect.width;
-  overlay.height = rect.height;
+  overlay.width=viewer.clientWidth;
+  overlay.height=viewer.clientHeight;
 }
 
-// ===== CAPTURE (ONLY ONCE) =====
-
-
+// ===== CAPTURE (FREEZE) =====
 async function captureFrame(){
 
   if(!video.srcObject){
-    resultBox.textContent = "⚠️ กล้องยังไม่เริ่ม";
+    resultBox.textContent="⚠️ Start camera first";
     return;
   }
 
-  resultBox.textContent = "⏳ Capturing...";
+  await new Promise(r=>setTimeout(r,300));
 
-  // 🔥 รอ video ready จริง
-  if(video.readyState < 2){
-    await new Promise(resolve=>{
-      video.onloadeddata = () => resolve();
-    });
-  }
+  const w=video.videoWidth;
+  const h=video.videoHeight;
 
-  // 🔥 รอ frame stabilize (สำคัญบน iPad)
-  await new Promise(r => setTimeout(r, 300));
+  const c=document.createElement("canvas");
+  c.width=w; c.height=h;
 
-  // 🔥 ใช้ขนาดจริงจาก video
-  const w = video.videoWidth;
-  const h = video.videoHeight;
-
-  if(!w || !h){
-    resultBox.textContent = "❌ ไม่สามารถอ่านขนาด video";
-    return;
-  }
-
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-
-  const ctx = c.getContext("2d");
-
-  // 🔥 กัน mirror (iOS บางกรณี)
-  ctx.save();
-  ctx.scale(1,1);
+  const ctx=c.getContext("2d");
   ctx.drawImage(video,0,0,w,h);
-  ctx.restore();
 
-  try{
-    cachedFrame = ctx.getImageData(0,0,w,h);
-    cachedGray = toGray(cachedFrame);
-    resultBox.textContent = "✅ Capture สำเร็จ";
-  }catch(e){
-    console.log(e);
-    resultBox.textContent = "❌ Capture error";
-  }
+  cachedFrame=ctx.getImageData(0,0,w,h);
+  cachedGray=toGray(cachedFrame);
+
+  video.pause();
+  isCaptured=true;
+
+  resultBox.textContent="✅ Captured (Frozen)";
 }
 
-// ===== TAP =====
-overlay.addEventListener("click", (e)=>{
-
-  const rect = overlay.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  // ===== SELECT CONTROL =====
-  if(selectMode){
-
-    let nearest=null, min=9999;
-
-    samples.forEach(s=>{
-      const d=Math.hypot(s.x-x,s.y-y);
-      if(d<min){min=d; nearest=s;}
-    });
-
-    if(nearest){
-      if(selectMode==="normal") control.normal=nearest;
-      if(selectMode==="deficient") control.deficient=nearest;
-    }
-
-    selectMode=null;
-    drawAll();
-    updateResult();
-    return;
+// ===== GRAY =====
+function toGray(img){
+  const g=new Uint8ClampedArray(img.width*img.height);
+  for(let i=0,j=0;i<img.data.length;i+=4,j++){
+    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
   }
-
-  // ===== ADD SAMPLE =====
-  if(!cachedFrame){
-    resultBox.textContent="⚠️ Capture ก่อน";
-    return;
-  }
-
-  if(samples.length>=MAX_SAMPLES){
-    resultBox.textContent="❌ ครบ 20 จุด";
-    return;
-  }
-
-  addSnappedCircle(x,y);
-});
-
-// ===== SNAP =====
-function addSnappedCircle(cx,cy){
-
-  if(samples.length>=MAX_SAMPLES) return;
-
-  const frame=cachedFrame;
-  const g=cachedGray;
-
-  const rect=overlay.getBoundingClientRect();
-  const scale=frame.width/rect.width;
-
-  let x=cx*scale, y=cy*scale;
-
-  let best={x,y}, bestScore=Infinity;
-
-  for(let dy=-6;dy<=6;dy++){
-    for(let dx=-6;dx<=6;dx++){
-
-      let score=0;
-
-      for(let a=0;a<360;a+=30){
-        const rad=a*Math.PI/180;
-        const px=Math.round(x+dx+SAMPLE_RADIUS*Math.cos(rad));
-        const py=Math.round(y+dy+SAMPLE_RADIUS*Math.sin(rad));
-
-        if(px<0||py<0||px>=frame.width||py>=frame.height) continue;
-
-        score+=g[py*frame.width+px];
-      }
-
-      if(score<bestScore){
-        bestScore=score;
-        best={x:x+dx,y:y+dy};
-      }
-    }
-  }
-
-  const ox=best.x/scale;
-  const oy=best.y/scale;
-
-  const rgb=readRGB(frame,ox,oy,SAMPLE_RADIUS);
-
-  samples.push({x:ox,y:oy,r:SAMPLE_RADIUS,rgb});
-
-  drawAll();
-  updateResult();
+  return g;
 }
 
 // ===== RGB =====
@@ -220,27 +114,7 @@ function readRGB(frame,cx,cy,r){
     }
   }
 
-  return {r:~~(R/count),g:~~(G/count),b:~~(B/count)};
-}
-
-// ===== GRAY =====
-function toGray(img){
-  const g=new Uint8ClampedArray(img.width*img.height);
-  for(let i=0,j=0;i<img.data.length;i+=4,j++){
-    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
-  }
-  return g;
-}
-
-// ===== CONTROL =====
-function setNormal(){
-  selectMode="normal";
-  resultBox.textContent="เลือกจุด Normal (N)";
-}
-
-function setDeficient(){
-  selectMode="deficient";
-  resultBox.textContent="เลือกจุด Deficient (D)";
+  return {r:R/count,g:G/count,b:B/count};
 }
 
 // ===== INTENSITY =====
@@ -248,18 +122,33 @@ function intensity(rgb){
   return rgb.g/(rgb.r+rgb.g+rgb.b+0.001);
 }
 
+// ===== AUTO CONTROL =====
+function autoAssignControl(){
+
+  if(samples.length<2) return;
+
+  const arr = samples.map(s=>({s,v:intensity(s.rgb)}));
+
+  arr.sort((a,b)=>b.v-a.v);
+
+  control.normal = arr[0].s;
+  control.deficient = arr[arr.length-1].s;
+
+  drawAll();
+  updateResult();
+}
+
 // ===== CALC =====
 function calculate(){
 
-  if(!control.normal||!control.deficient) return {valid:false};
+  if(!control.normal||!control.deficient) return null;
 
   const N=intensity(control.normal.rgb);
   const D=intensity(control.deficient.rgb);
 
-  if(N<=D) return {valid:false};
+  if(N<=D) return null;
 
-  let results=samples.map((s,i)=>{
-
+  return samples.map((s,i)=>{
     const S=intensity(s.rgb);
     let ratio=(S-D)/((N-D)+0.001);
 
@@ -269,8 +158,6 @@ function calculate(){
 
     return {i,ratio:ratio.toFixed(2),res};
   });
-
-  return {valid:true,N,D,results};
 }
 
 // ===== DRAW =====
@@ -289,8 +176,6 @@ function drawAll(){
     const x=s.x+6,y=s.y-6;
 
     ctx.fillStyle="yellow";
-    ctx.font="13px Arial";
-
     const t=`#${i}`;
     ctx.fillText(t,x,y);
 
@@ -311,17 +196,16 @@ function drawAll(){
 // ===== RESULT =====
 function updateResult(){
 
-  const calc=calculate();
+  const res=calculate();
 
-  if(!calc.valid){
-    resultBox.textContent="⚠️ ตั้ง Control ไม่ถูกต้อง";
+  if(!res){
+    resultBox.textContent="⚠️ Set control";
     return;
   }
 
-  let txt=`N:${calc.N.toFixed(3)} D:${calc.D.toFixed(3)}\n\n`;
-
-  calc.results.forEach(r=>{
-    txt+=`#${r.i} → ${r.res} (${r.ratio})\n`;
+  let txt="";
+  res.forEach(r=>{
+    txt+=`#${r.i} ${r.res} (${r.ratio})\n`;
   });
 
   resultBox.textContent=txt;
@@ -332,12 +216,4 @@ function resetSamples(){
   samples=[];
   control={normal:null,deficient:null};
   drawAll();
-  resultBox.textContent="";
-}
-
-// ===== UNDO =====
-function undo(){
-  samples.pop();
-  drawAll();
-  updateResult();
 }
