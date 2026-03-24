@@ -774,13 +774,12 @@ function drawCircles(circles){
 
   const ctx = overlay.getContext("2d");
 
-  overlay.width = video.videoWidth;
-  overlay.height = video.videoHeight;
-
   ctx.clearRect(0,0,overlay.width,overlay.height);
 
   ctx.strokeStyle = "red";
   ctx.fillStyle = "yellow";
+  ctx.lineWidth = 2;
+  ctx.font = "14px Arial";
 
   circles.forEach((c,i)=>{
 
@@ -788,9 +787,45 @@ function drawCircles(circles){
     ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
     ctx.stroke();
 
-    ctx.fillText(i, c.x+5, c.y+5);
+    // index
+    ctx.fillText(i, c.x + 5, c.y + 5);
+
+    // confidence
+    ctx.fillText(
+      (c.score*100).toFixed(0)+"%",
+      c.x - 10,
+      c.y - c.r - 5
+    );
 
   });
 
+}
+    
+function syncOverlay(){
+
+  const rect = video.getBoundingClientRect();
+
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
+
+  overlay.style.width = rect.width + "px";
+  overlay.style.height = rect.height + "px";
+}
+
+function drawCenter(){
+
+  const ctx = overlay.getContext("2d");
+
+  ctx.strokeStyle = "lime";
+
+  ctx.beginPath();
+  ctx.moveTo(overlay.width/2, 0);
+  ctx.lineTo(overlay.width/2, overlay.height);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(0, overlay.height/2);
+  ctx.lineTo(overlay.width, overlay.height/2);
+  ctx.stroke();
 }
 
