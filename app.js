@@ -16,7 +16,9 @@ let selectMode = null;
 
 // ===== CAMERA =====
 async function startCamera(){
-  
+  setTimeout(()=>{
+  resultBox.textContent = "📷 พร้อม capture";
+}, 800);
   
   stream = await navigator.mediaDevices.getUserMedia({
     video:{ facingMode:{ ideal:"environment" } }
