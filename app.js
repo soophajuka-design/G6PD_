@@ -1,307 +1,88 @@
 const video = document.getElementById("video");
-const template = document.getElementById("template");
+const overlay = document.getElementById("overlay");
 
-let stream = null;
-let grid = [];
+let stream=null;
+let grid=[];
+let locked=false;
 
 // ===== CAMERA =====
 async function startCamera(){
+  stream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:{ideal:"environment"}}
+  });
+  video.srcObject = stream;
 
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } }
-    });
-
-    video.srcObject = stream;
-
-    video.onloadedmetadata = () => {
-      syncTemplate();
-      initGrid();
-      drawTemplateGrid();
-    };
-
-  }catch(err){
-    alert("Camera error: " + err);
-  }
+  video.onloadedmetadata = ()=>{
+    syncCanvas();
+  };
 }
 
 function stopCamera(){
   if(stream){
-    stream.getTracks().forEach(t => t.stop());
-    stream = null;
+    stream.getTracks().forEach(t=>t.stop());
+    stream=null;
   }
 }
 
 // ===== SYNC =====
-function syncTemplate(){
+function syncCanvas(){
   const rect = video.getBoundingClientRect();
-  template.width = rect.width;
-  template.height = rect.height;
+  overlay.width = rect.width;
+  overlay.height = rect.height;
 }
 
-// ===== INIT GRID =====
-
-function initGrid(){
-
-  grid = [];
-
-  const W = template.width;
-  const H = template.height;
-
-  // === aspect ratio กระดาษจริง ===
-  const paperRatio = 7/12.6;
-
-  let drawW = W;
-  let drawH = W / paperRatio;
-
-  if(drawH > H){
-    drawH = H;
-    drawW = H * paperRatio;
-  }
-
-  const offsetX = (W - drawW)/2;
-  const offsetY = (H - drawH)/2;
-
-  // === pattern จากภาพจริง (calibrated) ===
-  const cols = 4;
-  const rows = 5;
-
-  // 🔥 spacing จริงจากภาพ (ปรับจูนแล้ว)
-  const xPos = [0.16, 0.38, 0.60, 0.82];
-  const yPos = [0.13, 0.30, 0.47, 0.64, 0.81];
-
-  let idx = 0;
-
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-
-      const x = offsetX + drawW * xPos[c];
-      const y = offsetY + drawH * yPos[r];
-
-      const radius = drawW * 0.075; // 🔥 match วงจริง
-
-      grid.push({
-        index: idx++,
-        x: x,
-        y: y,
-        r: radius
-      });
-    }
-  }
-}
-// ===== DRAW =====
-function drawTemplateGrid(){
-
-  const ctx = template.getContext("2d");
-  ctx.clearRect(0,0,template.width,template.height);
-
-  ctx.strokeStyle = "lime";
-
-  grid.forEach(g=>{
-    ctx.beginPath();
-    ctx.arc(g.x,g.y,g.r,0,Math.PI*2);
-    ctx.stroke();
-  });
-
-  // center cross
-  ctx.strokeStyle = "red";
-  ctx.beginPath();
-  ctx.moveTo(template.width/2,0);
-  ctx.lineTo(template.width/2,template.height);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(0,template.height/2);
-  ctx.lineTo(template.width,template.height/2);
-  ctx.stroke();
-}
-
-// ===== IMAGE PROCESS =====
-function getGrayFrame(){
-
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const ctx = canvas.getContext("2d");
+// ===== GET FRAME =====
+function getFrame(){
+  const c=document.createElement("canvas");
+  c.width=video.videoWidth;
+  c.height=video.videoHeight;
+  const ctx=c.getContext("2d");
   ctx.drawImage(video,0,0);
-
-  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
-  const data = img.data;
-
-  const gray = new Uint8ClampedArray(canvas.width*canvas.height);
-
-  for(let i=0,j=0;i<data.length;i+=4,j++){
-    gray[j] = (data[i]+data[i+1]+data[i+2])/3;
-  }
-
-  return {gray, w:canvas.width, h:canvas.height};
+  return ctx.getImageData(0,0,c.width,c.height);
 }
 
+function toGray(img){
+  const g=new Uint8ClampedArray(img.width*img.height);
+  for(let i=0,j=0;i<img.data.length;i+=4,j++){
+    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
+  }
+  return g;
+}
+
+// ===== EDGE =====
 function edgeDetect(gray,w,h){
-
-  const edge = new Uint8ClampedArray(w*h);
-
+  const e=new Uint8ClampedArray(w*h);
   for(let y=1;y<h-1;y++){
     for(let x=1;x<w-1;x++){
-
-      const i = y*w+x;
-
-      const gx =
-        -gray[i-w-1] -2*gray[i-1] -gray[i+w-1] +
-         gray[i-w+1] +2*gray[i+1] +gray[i+w+1];
-
-      const gy =
-        -gray[i-w-1] -2*gray[i-w] -gray[i-w+1] +
-         gray[i+w-1] +2*gray[i+w] +gray[i+w+1];
-
-      const g = Math.sqrt(gx*gx+gy*gy);
-
-      edge[i] = g > 50 ? 255 : 0;
+      const i=y*w+x;
+      const gx=-gray[i-w-1]-2*gray[i-1]-gray[i+w-1]
+               +gray[i-w+1]+2*gray[i+1]+gray[i+w+1];
+      const gy=-gray[i-w-1]-2*gray[i-w]-gray[i-w+1]
+               +gray[i+w-1]+2*gray[i+w]+gray[i+w+1];
+      const g=Math.sqrt(gx*gx+gy*gy);
+      e[i]=g>60?255:0;
     }
   }
-
-  return edge;
+  return e;
 }
 
-// ===== LSQ =====
-function collectEdgePoints(cx,cy,r,edge,w,h){
+// ===== PAPER DETECT (QUAD) =====
+function detectPaper(gray,w,h){
+  const e=edgeDetect(gray,w,h);
 
-  const pts = [];
-  const searchR = r*1.3;
-
-  for(let y=-searchR;y<=searchR;y++){
-    for(let x=-searchR;x<=searchR;x++){
-
-      const px = Math.round(cx+x);
-      const py = Math.round(cy+y);
-
-      if(px<0||py<0||px>=w||py>=h) continue;
-
-      const dist = Math.sqrt(x*x+y*y);
-
-      if(Math.abs(dist-r)<4){
-        const i = py*w+px;
-        if(edge[i]===255){
-          pts.push([px,py]);
-        }
-      }
-    }
-  }
-
-  return pts;
-}
-
-function fitCircleLSQ(points){
-
-  const n = points.length;
-  if(n<20) return null;
-
-  let sumX=0,sumY=0,sumX2=0,sumY2=0,sumXY=0;
-  let sumX3=0,sumY3=0,sumX1Y2=0,sumX2Y1=0;
-
-  points.forEach(([x,y])=>{
-    const x2=x*x,y2=y*y;
-    sumX+=x; sumY+=y;
-    sumX2+=x2; sumY2+=y2;
-    sumXY+=x*y;
-    sumX3+=x2*x;
-    sumY3+=y2*y;
-    sumX1Y2+=x*y2;
-    sumX2Y1+=x2*y;
-  });
-
-  const C = n*sumX2 - sumX*sumX;
-  const D = n*sumXY - sumX*sumY;
-  const E = n*(sumX3 + sumX1Y2) - (sumX2+sumY2)*sumX;
-  const G = n*sumY2 - sumY*sumY;
-  const H = n*(sumX2Y1 + sumY3) - (sumX2+sumY2)*sumY;
-
-  const denom = (C*G - D*D);
-  if(Math.abs(denom)<1e-6) return null;
-
-  const a = (H*D - E*G)/denom;
-  const b = (H*C - E*D)/(D*D - G*C);
-
-  const cx = -a/2;
-  const cy = -b/2;
-
-  const r = Math.sqrt(
-    (sumX2+sumY2 - a*sumX - b*sumY)/n + (a*a+b*b)/4
-  );
-
-  return {x:cx,y:cy,r:r};
-}
-
-// ===== MAIN =====
-function refineGridLSQ(){
-
-  const frame = getGrayFrame();
-  const edge = edgeDetect(frame.gray,frame.w,frame.h);
-
-  grid.forEach(g=>{
-
-    const pts = collectEdgePoints(g.x,g.y,g.r,edge,frame.w,frame.h);
-    const fit = fitCircleLSQ(pts);
-
-    if(fit){
-      g.x = fit.x;
-      g.y = fit.y;
-      g.r = fit.r;
-    }
-
-  });
-}
-
-function runLSQ(){
-
-  for(let i=0;i<2;i++){
-    refineGridLSQ();
-  }
-
-  drawTemplateGrid();
-}
-
-// ===== RESIZE =====
-let resizeTimer;
-
-window.addEventListener("resize", () => {
-
-  clearTimeout(resizeTimer);
-
-  resizeTimer = setTimeout(() => {
-    if(video.videoWidth>0){
-      syncTemplate();
-      initGrid();
-      drawTemplateGrid();
-    }
-  },150);
-
-});
-
-function findPaperQuad(gray, w, h){
-  // threshold ง่ายๆ + edge
-  const edge = edgeDetect(gray, w, h);
-
-  // หา bounding box ของ edge หนาแน่นสุด
-  let minX=w, minY=h, maxX=0, maxY=0;
+  let minX=w,minY=h,maxX=0,maxY=0;
 
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
-      const i=y*w+x;
-      if(edge[i]){
-        if(x<minX) minX=x;
-        if(y<minY) minY=y;
-        if(x>maxX) maxX=x;
-        if(y>maxY) maxY=y;
+      if(e[y*w+x]){
+        if(x<minX)minX=x;
+        if(y<minY)minY=y;
+        if(x>maxX)maxX=x;
+        if(y>maxY)maxY=y;
       }
     }
   }
 
-  // fallback ถ้าไม่เจอ
-  if(maxX-minX<50 || maxY-minY<50) return null;
-
-  // ใช้เป็น quad (approx)
   return [
     {x:minX,y:minY},
     {x:maxX,y:minY},
@@ -310,166 +91,199 @@ function findPaperQuad(gray, w, h){
   ];
 }
 
-function cropToPaper(frame, quad){
+// ===== HOMOGRAPHY (approx crop+scale) =====
+function warpPaper(frame,quad){
 
-  const {w,h} = frame;
+  const ratio=7/12.6;
+  const H=400;
+  const W=Math.round(H*ratio);
 
-  // target size (fix ratio 7:12.6)
-  const targetH = 400;
-  const targetW = Math.round(targetH * (7/12.6));
+  const c=document.createElement("canvas");
+  c.width=W; c.height=H;
+  const ctx=c.getContext("2d");
 
-  const canvas = document.createElement("canvas");
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext("2d");
+  const minX=quad[0].x;
+  const minY=quad[0].y;
+  const maxX=quad[2].x;
+  const maxY=quad[2].y;
 
-  // ใช้ drawImage crop แบบง่ายก่อน (แทน homography เต็ม)
-  const minX = quad[0].x;
-  const minY = quad[0].y;
-  const maxX = quad[2].x;
-  const maxY = quad[2].y;
-
-  ctx.drawImage(
-    video,
-    minX, minY,
-    maxX-minX, maxY-minY,
-    0, 0,
-    targetW, targetH
+  ctx.drawImage(video,
+    minX,minY,
+    maxX-minX,maxY-minY,
+    0,0,W,H
   );
 
-  return ctx.getImageData(0,0,targetW,targetH);
+  return ctx.getImageData(0,0,W,H);
 }
-function detectCircles(gray, w, h){
 
-  const edge = edgeDetect(gray,w,h);
+// ===== CIRCLE DETECT =====
+function detectCircles(gray,w,h){
 
-  const centers = [];
+  const edge=edgeDetect(gray,w,h);
+  const circles=[];
 
-  const step = 4;
+  for(let y=20;y<h-20;y+=4){
+    for(let x=20;x<w-20;x+=4){
 
-  for(let y=20;y<h-20;y+=step){
-    for(let x=20;x<w-20;x+=step){
+      let bestR=0,score=0;
 
-      let score = 0;
+      for(let r=10;r<25;r+=2){
+        let hit=0;
 
-      for(let a=0;a<360;a+=30){
-        const rad = a*Math.PI/180;
-        const px = Math.round(x + 15*Math.cos(rad));
-        const py = Math.round(y + 15*Math.sin(rad));
+        for(let a=0;a<360;a+=30){
+          const rad=a*Math.PI/180;
+          const px=Math.round(x+r*Math.cos(rad));
+          const py=Math.round(y+r*Math.sin(rad));
+          if(edge[py*w+px]) hit++;
+        }
 
-        if(edge[py*w+px]) score++;
+        if(hit>6){score++; bestR=r;}
       }
 
-      if(score > 6){
-        centers.push({x,y});
+      if(score>=2){
+        circles.push({x,y,r:bestR});
       }
     }
   }
 
-  return centers;
+  return circles;
 }
-function clusterGrid(points){
 
-  // sort ตาม Y → แบ่ง row
-  points.sort((a,b)=>a.y-b.y);
+// ===== MERGE =====
+function mergeCircles(c){
+  const out=[];
+  c.forEach(p=>{
+    let found=false;
+    for(let o of out){
+      const d=Math.hypot(p.x-o.x,p.y-o.y);
+      if(d<20){
+        o.x=(o.x+p.x)/2;
+        o.y=(o.y+p.y)/2;
+        o.r=(o.r+p.r)/2;
+        found=true;
+        break;
+      }
+    }
+    if(!found) out.push({...p});
+  });
+  return out;
+}
 
-  const rows = [];
+// ===== GRID =====
+function buildGrid(circles){
 
-  while(points.length){
+  circles.sort((a,b)=>a.y-b.y);
+  const rows=[];
 
-    const base = points.shift();
+  while(circles.length){
+    const base=circles.shift();
+    const row=[base];
 
-    const group = [base];
-
-    for(let i=points.length-1;i>=0;i--){
-      if(Math.abs(points[i].y - base.y) < 20){
-        group.push(points[i]);
-        points.splice(i,1);
+    for(let i=circles.length-1;i>=0;i--){
+      if(Math.abs(circles[i].y-base.y)<25){
+        row.push(circles[i]);
+        circles.splice(i,1);
       }
     }
 
-    rows.push(group);
+    row.sort((a,b)=>a.x-b.x);
+    rows.push(row);
   }
-
-  // sort ในแต่ละ row ตาม X
-  rows.forEach(r=>r.sort((a,b)=>a.x-b.x));
 
   return rows;
 }
-function buildTemplate(rows, w, h){
 
-  const template = [];
+// ===== MAP BACK =====
+function mapToOverlay(rows,quad,warpW,warpH){
 
-  rows.forEach(row=>{
-    row.forEach(p=>{
-      template.push({
-        x: p.x / w,
-        y: p.y / h
+  grid=[];
+  const rect=video.getBoundingClientRect();
+
+  const scaleX=rect.width/warpW;
+  const scaleY=rect.height/warpH;
+
+  let idx=0;
+
+  rows.forEach(r=>{
+    r.forEach(p=>{
+      grid.push({
+        index:idx++,
+        x:p.x*scaleX,
+        y:p.y*scaleY,
+        r:p.r*scaleX
       });
     });
   });
-
-  return template;
-}
-function saveTemplate(tpl){
-  localStorage.setItem("g6pd_template", JSON.stringify(tpl));
 }
 
-function loadTemplate(){
-  const t = localStorage.getItem("g6pd_template");
-  return t ? JSON.parse(t) : null;
-}
-function applyTemplate(tpl){
+// ===== LSQ refine =====
+function refineLSQ(){
 
-  grid = [];
+  const frame=getFrame();
+  const gray=toGray(frame);
+  const edge=edgeDetect(gray,frame.width,frame.height);
 
-  const W = template.width;
-  const H = template.height;
+  grid.forEach(g=>{
 
-  tpl.forEach((p,i)=>{
-    grid.push({
-      index: i,
-      x: p.x * W,
-      y: p.y * H,
-      r: W * 0.07
-    });
+    const pts=[];
+
+    for(let a=0;a<360;a+=20){
+      const rad=a*Math.PI/180;
+      const px=Math.round(g.x+g.r*Math.cos(rad));
+      const py=Math.round(g.y+g.r*Math.sin(rad));
+
+      if(edge[py*frame.width+px]){
+        pts.push([px,py]);
+      }
+    }
+
+    if(pts.length<6) return;
+
+    let mx=0,my=0;
+    pts.forEach(p=>{mx+=p[0];my+=p[1];});
+    mx/=pts.length; my/=pts.length;
+
+    g.x=mx;
+    g.y=my;
   });
 
-  drawTemplateGrid();
+  draw();
 }
-function autoCalibrate(){
 
-  const frame = getGrayFrame();
+// ===== DRAW =====
+function draw(){
 
-  const quad = findPaperQuad(frame.gray, frame.w, frame.h);
+  const ctx=overlay.getContext("2d");
+  ctx.clearRect(0,0,overlay.width,overlay.height);
 
-  if(!quad){
-    alert("ไม่พบกระดาษ");
-    return;
-  }
+  ctx.strokeStyle="lime";
+  ctx.lineWidth=2;
 
-  const crop = cropToPaper(frame, quad);
+  grid.forEach(g=>{
+    ctx.beginPath();
+    ctx.arc(g.x,g.y,g.r,0,Math.PI*2);
+    ctx.stroke();
+  });
+}
 
-  const gray = new Uint8ClampedArray(crop.width*crop.height);
+// ===== MAIN =====
+function detectAndLock(){
 
-  for(let i=0,j=0;i<crop.data.length;i+=4,j++){
-    gray[j]=(crop.data[i]+crop.data[i+1]+crop.data[i+2])/3;
-  }
+  const frame=getFrame();
+  const gray=toGray(frame);
 
-  const centers = detectCircles(gray, crop.width, crop.height);
+  const quad=detectPaper(gray,frame.width,frame.height);
 
-  if(centers.length < 10){
-    alert("detect วงไม่พอ");
-    return;
-  }
+  const warp=warpPaper(frame,quad);
+  const g2=toGray(warp);
 
-  const rows = clusterGrid(centers);
+  let circles=detectCircles(g2,warp.width,warp.height);
+  circles=mergeCircles(circles);
 
-  const tpl = buildTemplate(rows, crop.width, crop.height);
+  const rows=buildGrid(circles);
 
-  saveTemplate(tpl);
+  mapToOverlay(rows,quad,warp.width,warp.height);
 
-  applyTemplate(tpl);
-
-  alert("Calibrate สำเร็จ");
+  locked=true;
+  draw();
 }
