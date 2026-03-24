@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>G6PD Analyzer (Tap Mode)</title>
+<title>G6PD Analyzer Pro</title>
 
 <link rel="manifest" href="manifest.json">
 
@@ -32,16 +32,16 @@ video {
 }
 
 button {
-  margin:6px;
+  margin:5px;
   padding:10px;
-  font-size:16px;
+  font-size:15px;
 }
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer (Tap Sampling)</h3>
+<h3>G6PD Analyzer Pro</h3>
 
 <div class="container">
   <video id="video" autoplay playsinline muted></video>
@@ -50,11 +50,16 @@ button {
 
 <br>
 
-<button onclick="startCamera()">Start Camera</button>
-<button onclick="stopCamera()">Stop Camera</button>
+<button onclick="startCamera()">Start</button>
+<button onclick="stopCamera()">Stop</button>
+<button onclick="captureFrame()">Capture Frame</button>
 <button onclick="resetSamples()">Reset</button>
 <button onclick="undo()">Undo</button>
-<p>Tap anywhere to measure RGB</p>
+
+<br>
+
+<button onclick="setNormal()">Set Normal (C+)</button>
+<button onclick="setDeficient()">Set Deficient (C-)</button>
 
 <pre id="result"></pre>
 
