@@ -1,47 +1,58 @@
 <!DOCTYPE html>
 <html>
-  <div class="container">
-  <video id="video" autoplay playsinline muted></video>
-
-  <!-- overlay template -->
-  <canvas id="template"></canvas>
-
-</div>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>G6PD Analyzer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G6PD Analyzer (Stable Align)</title>
 
-<link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.json">
 
+<style>
+body {
+  background:black;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
+
+.container {
+  position:relative;
+  display:inline-block;
+}
+
+video {
+  width:320px;
+  background:black;
+}
+
+#template {
+  position:absolute;
+  top:0;
+  left:0;
+  pointer-events:none;
+}
+
+button {
+  margin:5px;
+  padding:10px;
+  font-size:16px;
+}
+</style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer</h3>
+<h2>G6PD Analyzer (Alignment Mode)</h2>
 
 <div class="container">
-  <video id="video" autoplay playsinline muted webkit-playsinline></video>
-  <canvas id="overlay"></canvas>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="template"></canvas>
 </div>
-
-<button id="camBtn">Start Camera</button>
-<button onclick="detectGrid()">Auto Grid</button>
-<button onclick="readRGB()">Read RGB</button>
-<button onclick="processPaper()">Auto Rectify (7x12.6)</button>
-<button onclick="processPaper()">1. Rectify</button>
-<button onclick="generateGrid()">2. Generate Grid</button>
-<button onclick="readG6PD()">3. Analyze G6PD</button>
-<button onclick="detectCircles()">Auto Detect Circles</button>
-<button onclick="runAll()">AUTO DETECT + GRID</button>
 
 <br>
 
-Normal: <input id="normalIdx" type="number" value="0">
-Deficient: <input id="defIdx" type="number" value="1">
-
-<pre id="debug"></pre>
+<button onclick="startCamera()">Start Camera</button>
+<button onclick="stopCamera()">Stop Camera</button>
 
 <script src="app.js"></script>
 
