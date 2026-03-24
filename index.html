@@ -3,43 +3,38 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>G6PD Analyzer Pro</title>
+<title>G6PD Analyzer Pro (Homography)</title>
 
 <link rel="manifest" href="manifest.json">
 
 <style>
 body { background:black; color:white; text-align:center; font-family:Arial; }
-
 .container { position:relative; display:inline-block; }
-
 video { width:320px; background:black; }
-
-#template {
+#overlay {
   position:absolute;
-  top:0;
-  left:0;
+  top:0; left:0;
   pointer-events:none;
 }
-
-button { margin:5px; padding:10px; font-size:16px; }
+button { margin:6px; padding:10px; font-size:16px; }
 </style>
 </head>
 
 <body>
 
-<h2>G6PD Analyzer (Precision Mode)</h2>
+<h3>G6PD Analyzer (Homography + Subpixel)</h3>
 
 <div class="container">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="template"></canvas>
+  <canvas id="overlay"></canvas>
 </div>
 
 <br>
 
-<button onclick="startCamera()">Start Camera</button>
-<button onclick="stopCamera()">Stop Camera</button>
-<button onclick="runLSQ()">Precision Fit</button>
-<button onclick="autoCalibrate()">Auto Calibrate</button>
+<button onclick="startCamera()">Start</button>
+<button onclick="stopCamera()">Stop</button>
+<button onclick="detectAndLock()">Auto Detect + Lock</button>
+<button onclick="refineLSQ()">Refine (Subpixel)</button>
 
 <script src="app.js"></script>
 
