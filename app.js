@@ -1,240 +1,161 @@
 const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
+const resultBox = document.getElementById("result");
 
-let stream=null;
-let grid=[];
+let stream = null;
+let samples = [];
+
+const SAMPLE_RADIUS = 20;
 
 // ===== CAMERA =====
 async function startCamera(){
-  stream = await navigator.mediaDevices.getUserMedia({
-    video:{ facingMode:{ideal:"environment"} }
-  });
-  video.srcObject = stream;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: "environment" }
+      }
+    });
 
-  video.onloadedmetadata = ()=>{
-    syncCanvas();
-  };
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+      video.play();
+      syncCanvas();
+    };
+
+  }catch(err){
+    alert("Camera error: " + err);
+  }
 }
 
 function stopCamera(){
   if(stream){
     stream.getTracks().forEach(t=>t.stop());
-    stream=null;
+    stream = null;
   }
 }
 
-// ===== SYNC =====
+// ===== SYNC CANVAS =====
 function syncCanvas(){
   const rect = video.getBoundingClientRect();
   overlay.width = rect.width;
   overlay.height = rect.height;
 }
 
-// ===== FRAME =====
-function getFrame(){
-  const c=document.createElement("canvas");
-  c.width=video.videoWidth;
-  c.height=video.videoHeight;
-  const ctx=c.getContext("2d");
+// ===== TAP EVENT =====
+overlay.addEventListener("click", (e)=>{
+
+  const rect = overlay.getBoundingClientRect();
+
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  addSample(x,y);
+});
+
+// ===== ADD SAMPLE =====
+function addSample(x,y){
+
+  const rgb = readRGB(x,y,SAMPLE_RADIUS);
+
+  samples.push({
+    x,y,
+    r:SAMPLE_RADIUS,
+    rgb
+  });
+
+  drawAll();
+  updateResult();
+}
+
+// ===== READ RGB =====
+function readRGB(cx,cy,r){
+
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d");
   ctx.drawImage(video,0,0);
-  return ctx.getImageData(0,0,c.width,c.height);
-}
 
-// ===== GRAYSCALE =====
-function gray(img){
-  const g=new Uint8ClampedArray(img.width*img.height);
-  for(let i=0,j=0;i<img.data.length;i+=4,j++){
-    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
-  }
-  return g;
-}
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
 
-// ===== THRESHOLD (adaptive แบบง่าย) =====
-function threshold(g,w,h){
-  const out=new Uint8ClampedArray(w*h);
-  for(let i=0;i<g.length;i++){
-    out[i]=g[i]<180?255:0;
-  }
-  return out;
-}
+  let sumR=0,sumG=0,sumB=0,count=0;
 
-// ===== DETECT PAPER (improved) =====
-function detectPaper(bin,w,h){
+  const scaleX = canvas.width / overlay.width;
+  const scaleY = canvas.height / overlay.height;
 
-  let minX=w, minY=h, maxX=0, maxY=0;
+  const centerX = cx * scaleX;
+  const centerY = cy * scaleY;
+  const radius = r * scaleX;
 
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      if(bin[y*w+x]){
-        if(x<minX)minX=x;
-        if(y<minY)minY=y;
-        if(x>maxX)maxX=x;
-        if(y>maxY)maxY=y;
-      }
-    }
-  }
+  for(let y=-radius;y<=radius;y++){
+    for(let x=-radius;x<=radius;x++){
 
-  return {minX,minY,maxX,maxY};
-}
+      if(x*x + y*y <= radius*radius){
 
-// ===== NORMALIZE (สำคัญ) =====
-function normalize(frame,box){
+        const px = Math.floor(centerX + x);
+        const py = Math.floor(centerY + y);
 
-  const ratio=7/12.6;
-  const H=500;
-  const W=Math.round(H*ratio);
+        if(px<0||py<0||px>=canvas.width||py>=canvas.height) continue;
 
-  const c=document.createElement("canvas");
-  c.width=W;
-  c.height=H;
+        const i = (py*canvas.width + px)*4;
 
-  const ctx=c.getContext("2d");
-
-  ctx.drawImage(video,
-    box.minX, box.minY,
-    box.maxX-box.minX,
-    box.maxY-box.minY,
-    0,0,W,H
-  );
-
-  return ctx.getImageData(0,0,W,H);
-}
-
-// ===== TEMPLATE GRID (FIXED) =====
-function createTemplate(w,h){
-
-  const rows=6;
-  const cols=4;
-
-  const marginX=w*0.15;
-  const marginY=h*0.12;
-
-  const stepX=(w-2*marginX)/(cols-1);
-  const stepY=(h-2*marginY)/(rows-1);
-
-  const circles=[];
-
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-
-      circles.push({
-        x:marginX + c*stepX,
-        y:marginY + r*stepY,
-        r:stepX*0.28
-      });
-    }
-  }
-
-  return circles;
-}
-
-// ===== SCORE วง (ใช้ intensity จริง) =====
-function scoreCircle(g,w,h,c){
-
-  let sum=0,count=0;
-
-  for(let y=-c.r;y<=c.r;y++){
-    for(let x=-c.r;x<=c.r;x++){
-
-      const dx=c.x+x;
-      const dy=c.y+y;
-
-      if(dx<0||dy<0||dx>=w||dy>=h) continue;
-
-      if(x*x+y*y <= c.r*c.r){
-        sum+=g[Math.floor(dy)*w+Math.floor(dx)];
+        sumR += img.data[i];
+        sumG += img.data[i+1];
+        sumB += img.data[i+2];
         count++;
       }
     }
   }
 
-  return sum/count;
-}
-
-// ===== AUTO ALIGN (สำคัญมาก) =====
-function refineGrid(g,w,h,grid){
-
-  grid.forEach(c=>{
-
-    let best=c;
-    let bestScore=999;
-
-    for(let dy=-5;dy<=5;dy++){
-      for(let dx=-5;dx<=5;dx++){
-
-        const test={
-          x:c.x+dx,
-          y:c.y+dy,
-          r:c.r
-        };
-
-        const s=scoreCircle(g,w,h,test);
-
-        if(s<bestScore){
-          bestScore=s;
-          best=test;
-        }
-      }
-    }
-
-    c.x=best.x;
-    c.y=best.y;
-  });
-}
-
-// ===== MAP TO SCREEN =====
-function mapToScreen(grid,w,h){
-
-  const rect=video.getBoundingClientRect();
-
-  const sx=rect.width/w;
-  const sy=rect.height/h;
-
-  return grid.map(g=>({
-    x:g.x*sx,
-    y:g.y*sy,
-    r:g.r*sx
-  }));
+  return {
+    r:Math.round(sumR/count),
+    g:Math.round(sumG/count),
+    b:Math.round(sumB/count)
+  };
 }
 
 // ===== DRAW =====
-function draw(grid){
+function drawAll(){
 
-  const ctx=overlay.getContext("2d");
+  const ctx = overlay.getContext("2d");
   ctx.clearRect(0,0,overlay.width,overlay.height);
 
-  ctx.strokeStyle="lime";
-  ctx.lineWidth=2;
+  samples.forEach((s,i)=>{
 
-  grid.forEach(c=>{
+    ctx.strokeStyle="lime";
+    ctx.lineWidth=2;
+
     ctx.beginPath();
-    ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
     ctx.stroke();
+
+    ctx.fillStyle="yellow";
+    ctx.font="12px Arial";
+    ctx.fillText(
+      `#${i} (${s.rgb.r},${s.rgb.g},${s.rgb.b})`,
+      s.x+8,
+      s.y-8
+    );
   });
 }
 
-// ===== MAIN =====
-function detectAndLock(){
+// ===== RESET =====
+function resetSamples(){
+  samples=[];
+  drawAll();
+  resultBox.textContent="";
+}
 
-  const frame=getFrame();
-  const g=gray(frame);
-  const bin=threshold(g,frame.width,frame.height);
+// ===== RESULT (พื้นฐาน) =====
+function updateResult(){
 
-  // 1 detect paper
-  const box=detectPaper(bin,frame.width,frame.height);
+  let txt = "";
 
-  // 2 normalize
-  const norm=normalize(frame,box);
-  const g2=gray(norm);
+  samples.forEach((s,i)=>{
+    txt += `#${i} → R:${s.rgb.r} G:${s.rgb.g} B:${s.rgb.b}\n`;
+  });
 
-  // 3 template
-  let template=createTemplate(norm.width,norm.height);
-
-  // 4 refine align (สำคัญ)
-  refineGrid(g2,norm.width,norm.height,template);
-
-  // 5 map
-  const mapped=mapToScreen(template,norm.width,norm.height);
-
-  draw(mapped);
+  resultBox.textContent = txt;
 }
