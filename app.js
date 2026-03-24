@@ -263,6 +263,7 @@ function calculate(){
 }
 
 // ===== DRAW =====
+
 function drawAll(){
 
   const ctx = overlay.getContext("2d");
@@ -270,19 +271,39 @@ function drawAll(){
 
   samples.forEach((s,i)=>{
 
-    let label = `#${i}`;
-
-    if(control.normal === s) label += " N";
-    if(control.deficient === s) label += " D";
-
+    // ===== วาดวง =====
     ctx.strokeStyle="lime";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
     ctx.stroke();
 
-    ctx.fillStyle="yellow";
-    ctx.font="13px Arial";
-    ctx.fillText(label, s.x+6, s.y-6);
+    // ===== วาด index =====
+    const baseX = s.x + 6;
+    const baseY = s.y - 6;
+
+    ctx.font = "13px Arial";
+
+    // ตัวเลข (สีเหลือง)
+    ctx.fillStyle = "yellow";
+    const indexText = `#${i}`;
+    ctx.fillText(indexText, baseX, baseY);
+
+    // วัดความกว้างเพื่อวาง N/D ต่อท้าย
+    const textWidth = ctx.measureText(indexText).width;
+
+    // ===== วาด N (สีเขียว) =====
+    if(control.normal === s){
+      ctx.fillStyle = "lime";
+      ctx.fillText(" N", baseX + textWidth, baseY);
+    }
+
+    // ===== วาด D (สีแดง) =====
+    if(control.deficient === s){
+      ctx.fillStyle = "red";
+      ctx.fillText(" D", baseX + textWidth, baseY);
+    }
+
   });
 }
 
