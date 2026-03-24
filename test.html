@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Camera Test</title>
+</head>
+
+<body style="background:black; color:white; text-align:center;">
+
+<h3>Camera Test</h3>
+
+<video id="video" autoplay playsinline muted style="width:100%; max-width:400px;"></video>
+
+<br><br>
+
+<button id="startBtn">Start Camera</button>
+
+<pre id="log"></pre>
+
+<script>
+const video = document.getElementById("video");
+const log = document.getElementById("log");
+
+document.getElementById("startBtn").onclick = async () => {
+
+  try{
+
+    log.textContent = "Starting...";
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false
+    });
+
+    video.srcObject = stream;
+
+    await video.play();
+
+    log.textContent = "✅ Camera OK";
+
+    console.log("stream:", stream);
+
+  }catch(e){
+
+    console.log(e);
+
+    log.textContent = "❌ " + e.name + " : " + e.message;
+  }
+};
+</script>
+
+</body>
+</html>
