@@ -3,26 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>G6PD Analyzer Pro (Homography)</title>
+<title>G6PD Analyzer (Tap Mode)</title>
 
 <link rel="manifest" href="manifest.json">
 
 <style>
-body { background:black; color:white; text-align:center; font-family:Arial; }
-.container { position:relative; display:inline-block; }
-video { width:320px; background:black; }
+body {
+  background:black;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
+
+.container {
+  position:relative;
+  display:inline-block;
+}
+
+video {
+  width:320px;
+  background:black;
+}
+
 #overlay {
   position:absolute;
-  top:0; left:0;
-  pointer-events:none;
+  top:0;
+  left:0;
 }
-button { margin:6px; padding:10px; font-size:16px; }
+
+button {
+  margin:6px;
+  padding:10px;
+  font-size:16px;
+}
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer (Homography + Subpixel)</h3>
+<h3>G6PD Analyzer (Tap Sampling)</h3>
 
 <div class="container">
   <video id="video" autoplay playsinline muted></video>
@@ -31,10 +50,13 @@ button { margin:6px; padding:10px; font-size:16px; }
 
 <br>
 
-<button onclick="startCamera()">Start</button>
-<button onclick="stopCamera()">Stop</button>
-<button onclick="detectAndLock()">Auto Detect + Lock</button>
-<button onclick="refineLSQ()">Refine (Subpixel)</button>
+<button onclick="startCamera()">Start Camera</button>
+<button onclick="stopCamera()">Stop Camera</button>
+<button onclick="resetSamples()">Reset</button>
+
+<p>Tap anywhere to measure RGB</p>
+
+<pre id="result"></pre>
 
 <script src="app.js"></script>
 
