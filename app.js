@@ -40,6 +40,7 @@ function syncTemplate(){
 }
 
 // ===== INIT GRID =====
+
 function initGrid(){
 
   grid = [];
@@ -47,43 +48,47 @@ function initGrid(){
   const W = template.width;
   const H = template.height;
 
-  const ratio = 7/12.6;
+  // === aspect ratio กระดาษจริง ===
+  const paperRatio = 7/12.6;
 
   let drawW = W;
-  let drawH = W / ratio;
+  let drawH = W / paperRatio;
 
   if(drawH > H){
     drawH = H;
-    drawW = H * ratio;
+    drawW = H * paperRatio;
   }
 
   const offsetX = (W - drawW)/2;
   const offsetY = (H - drawH)/2;
 
+  // === pattern จากภาพจริง (calibrated) ===
   const cols = 4;
-  const rows = 6;
+  const rows = 5;
 
-  const marginX = drawW * 0.12;
-  const marginY = drawH * 0.10;
-
-  const stepX = (drawW - marginX*2)/cols;
-  const stepY = (drawH - marginY*2)/rows;
+  // 🔥 spacing จริงจากภาพ (ปรับจูนแล้ว)
+  const xPos = [0.16, 0.38, 0.60, 0.82];
+  const yPos = [0.13, 0.30, 0.47, 0.64, 0.81];
 
   let idx = 0;
 
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
+      const x = offsetX + drawW * xPos[c];
+      const y = offsetY + drawH * yPos[r];
+
+      const radius = drawW * 0.075; // 🔥 match วงจริง
+
       grid.push({
         index: idx++,
-        x: offsetX + marginX + stepX*(c+0.5),
-        y: offsetY + marginY + stepY*(r+0.5),
-        r: Math.min(stepX,stepY)*0.38
+        x: x,
+        y: y,
+        r: radius
       });
     }
   }
 }
-
 // ===== DRAW =====
 function drawTemplateGrid(){
 
