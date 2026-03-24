@@ -278,3 +278,198 @@ window.addEventListener("resize", () => {
   },150);
 
 });
+
+function findPaperQuad(gray, w, h){
+  // threshold ง่ายๆ + edge
+  const edge = edgeDetect(gray, w, h);
+
+  // หา bounding box ของ edge หนาแน่นสุด
+  let minX=w, minY=h, maxX=0, maxY=0;
+
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const i=y*w+x;
+      if(edge[i]){
+        if(x<minX) minX=x;
+        if(y<minY) minY=y;
+        if(x>maxX) maxX=x;
+        if(y>maxY) maxY=y;
+      }
+    }
+  }
+
+  // fallback ถ้าไม่เจอ
+  if(maxX-minX<50 || maxY-minY<50) return null;
+
+  // ใช้เป็น quad (approx)
+  return [
+    {x:minX,y:minY},
+    {x:maxX,y:minY},
+    {x:maxX,y:maxY},
+    {x:minX,y:maxY}
+  ];
+}
+
+function cropToPaper(frame, quad){
+
+  const {w,h} = frame;
+
+  // target size (fix ratio 7:12.6)
+  const targetH = 400;
+  const targetW = Math.round(targetH * (7/12.6));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+
+  // ใช้ drawImage crop แบบง่ายก่อน (แทน homography เต็ม)
+  const minX = quad[0].x;
+  const minY = quad[0].y;
+  const maxX = quad[2].x;
+  const maxY = quad[2].y;
+
+  ctx.drawImage(
+    video,
+    minX, minY,
+    maxX-minX, maxY-minY,
+    0, 0,
+    targetW, targetH
+  );
+
+  return ctx.getImageData(0,0,targetW,targetH);
+}
+function detectCircles(gray, w, h){
+
+  const edge = edgeDetect(gray,w,h);
+
+  const centers = [];
+
+  const step = 4;
+
+  for(let y=20;y<h-20;y+=step){
+    for(let x=20;x<w-20;x+=step){
+
+      let score = 0;
+
+      for(let a=0;a<360;a+=30){
+        const rad = a*Math.PI/180;
+        const px = Math.round(x + 15*Math.cos(rad));
+        const py = Math.round(y + 15*Math.sin(rad));
+
+        if(edge[py*w+px]) score++;
+      }
+
+      if(score > 6){
+        centers.push({x,y});
+      }
+    }
+  }
+
+  return centers;
+}
+function clusterGrid(points){
+
+  // sort ตาม Y → แบ่ง row
+  points.sort((a,b)=>a.y-b.y);
+
+  const rows = [];
+
+  while(points.length){
+
+    const base = points.shift();
+
+    const group = [base];
+
+    for(let i=points.length-1;i>=0;i--){
+      if(Math.abs(points[i].y - base.y) < 20){
+        group.push(points[i]);
+        points.splice(i,1);
+      }
+    }
+
+    rows.push(group);
+  }
+
+  // sort ในแต่ละ row ตาม X
+  rows.forEach(r=>r.sort((a,b)=>a.x-b.x));
+
+  return rows;
+}
+function buildTemplate(rows, w, h){
+
+  const template = [];
+
+  rows.forEach(row=>{
+    row.forEach(p=>{
+      template.push({
+        x: p.x / w,
+        y: p.y / h
+      });
+    });
+  });
+
+  return template;
+}
+function saveTemplate(tpl){
+  localStorage.setItem("g6pd_template", JSON.stringify(tpl));
+}
+
+function loadTemplate(){
+  const t = localStorage.getItem("g6pd_template");
+  return t ? JSON.parse(t) : null;
+}
+function applyTemplate(tpl){
+
+  grid = [];
+
+  const W = template.width;
+  const H = template.height;
+
+  tpl.forEach((p,i)=>{
+    grid.push({
+      index: i,
+      x: p.x * W,
+      y: p.y * H,
+      r: W * 0.07
+    });
+  });
+
+  drawTemplateGrid();
+}
+function autoCalibrate(){
+
+  const frame = getGrayFrame();
+
+  const quad = findPaperQuad(frame.gray, frame.w, frame.h);
+
+  if(!quad){
+    alert("ไม่พบกระดาษ");
+    return;
+  }
+
+  const crop = cropToPaper(frame, quad);
+
+  const gray = new Uint8ClampedArray(crop.width*crop.height);
+
+  for(let i=0,j=0;i<crop.data.length;i+=4,j++){
+    gray[j]=(crop.data[i]+crop.data[i+1]+crop.data[i+2])/3;
+  }
+
+  const centers = detectCircles(gray, crop.width, crop.height);
+
+  if(centers.length < 10){
+    alert("detect วงไม่พอ");
+    return;
+  }
+
+  const rows = clusterGrid(centers);
+
+  const tpl = buildTemplate(rows, crop.width, crop.height);
+
+  saveTemplate(tpl);
+
+  applyTemplate(tpl);
+
+  alert("Calibrate สำเร็จ");
+}
