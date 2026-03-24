@@ -271,34 +271,33 @@ function drawAll(){
 
   samples.forEach((s,i)=>{
 
-    // ===== วาดวง =====
-    ctx.strokeStyle="lime";
+    // ===== วาดวง (สีขาว) =====
+    ctx.strokeStyle = "white";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
     ctx.stroke();
 
-    // ===== วาด index =====
+    // ===== label =====
     const baseX = s.x + 6;
     const baseY = s.y - 6;
 
     ctx.font = "13px Arial";
 
-    // ตัวเลข (สีเหลือง)
+    // index
     ctx.fillStyle = "yellow";
     const indexText = `#${i}`;
     ctx.fillText(indexText, baseX, baseY);
 
-    // วัดความกว้างเพื่อวาง N/D ต่อท้าย
     const textWidth = ctx.measureText(indexText).width;
 
-    // ===== วาด N (สีเขียว) =====
+    // N (เขียว)
     if(control.normal === s){
       ctx.fillStyle = "lime";
       ctx.fillText(" N", baseX + textWidth, baseY);
     }
 
-    // ===== วาด D (สีแดง) =====
+    // D (แดง)
     if(control.deficient === s){
       ctx.fillStyle = "red";
       ctx.fillText(" D", baseX + textWidth, baseY);
@@ -306,6 +305,7 @@ function drawAll(){
 
   });
 }
+
 
 // ===== RESULT =====
 function updateResult(){
