@@ -4,6 +4,8 @@ const resultBox = document.getElementById("result");
 
 let stream = null;
 let samples = [];
+let selectMode = null; 
+// "normal" | "deficient" | null
 
 const MAX_SAMPLES = 20;
 const SAMPLE_RADIUS = 25;
@@ -63,10 +65,46 @@ function captureFrame(){
 }
 
 // ===== TAP =====
+
 overlay.addEventListener("click", (e)=>{
 
+  const rect = overlay.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  // ===== MODE: SELECT CONTROL =====
+  if(selectMode){
+
+    let nearest = null;
+    let minDist = Infinity;
+
+    samples.forEach((s,i)=>{
+      const d = Math.hypot(s.x-x, s.y-y);
+      if(d < minDist){
+        minDist = d;
+        nearest = s;
+      }
+    });
+
+    if(nearest){
+      if(selectMode === "normal"){
+        control.normal = nearest;
+      }
+      if(selectMode === "deficient"){
+        control.deficient = nearest;
+      }
+    }
+
+    selectMode = null;
+    drawAll();
+    updateResult();
+    return;
+  }
+
+  // ===== MODE: ADD SAMPLE =====
+
   if(samples.length >= MAX_SAMPLES){
-    resultBox.textContent = "ครบ 20 จุดแล้ว";
+    resultBox.textContent = "❌ ครบ 20 จุดแล้ว";
     return;
   }
 
@@ -75,16 +113,13 @@ overlay.addEventListener("click", (e)=>{
     return;
   }
 
-  const rect = overlay.getBoundingClientRect();
-
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
   addSnappedCircle(x,y);
 });
 
 // ===== SNAP =====
 function addSnappedCircle(cx, cy){
+  
+if(samples.length >= MAX_SAMPLES) return;
 
   const frame = cachedFrame;
   const g = cachedGray;
@@ -184,13 +219,13 @@ function toGray(img){
 
 // ===== CONTROL =====
 function setNormal(){
-  control.normal = samples[samples.length-1];
-  updateResult();
+  selectMode = "normal";
+  resultBox.textContent = "👉 เลือกจุดสำหรับ Normal (N)";
 }
 
 function setDeficient(){
-  control.deficient = samples[samples.length-1];
-  updateResult();
+  selectMode = "deficient";
+  resultBox.textContent = "👉 เลือกจุดสำหรับ Deficient (D)";
 }
 
 // ===== INTENSITY =====
@@ -235,13 +270,19 @@ function drawAll(){
 
   samples.forEach((s,i)=>{
 
+    let label = `#${i}`;
+
+    if(control.normal === s) label += " N";
+    if(control.deficient === s) label += " D";
+
     ctx.strokeStyle="lime";
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
     ctx.stroke();
 
     ctx.fillStyle="yellow";
-    ctx.fillText(i, s.x+5, s.y);
+    ctx.font="13px Arial";
+    ctx.fillText(label, s.x+6, s.y-6);
   });
 }
 
