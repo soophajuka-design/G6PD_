@@ -5,7 +5,18 @@ const resultBox = document.getElementById("result");
 let stream = null;
 let samples = [];
 
+const MAX_SAMPLES = 20;
 const SAMPLE_RADIUS = 25;
+
+// ===== CACHE (สำคัญ) =====
+let cachedFrame = null;
+let cachedGray = null;
+
+// ===== CONTROL =====
+let control = {
+  normal: null,
+  deficient: null
+};
 
 // ===== CAMERA =====
 async function startCamera(){
@@ -35,78 +46,74 @@ function syncCanvas(){
   overlay.height = rect.height;
 }
 
+// ===== CAPTURE =====
+function captureFrame(){
+
+  const c = document.createElement("canvas");
+  c.width = video.videoWidth;
+  c.height = video.videoHeight;
+
+  const ctx = c.getContext("2d");
+  ctx.drawImage(video,0,0);
+
+  cachedFrame = ctx.getImageData(0,0,c.width,c.height);
+  cachedGray = toGray(cachedFrame);
+
+  alert("Frame Captured");
+}
+
 // ===== TAP =====
 overlay.addEventListener("click", (e)=>{
+
+  if(samples.length >= MAX_SAMPLES){
+    resultBox.textContent = "ครบ 20 จุดแล้ว";
+    return;
+  }
+
+  if(!cachedFrame){
+    alert("กด Capture Frame ก่อน");
+    return;
+  }
 
   const rect = overlay.getBoundingClientRect();
 
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
-
-  // ป้องกัน tap ซ้อน
-  for(let s of samples){
-    const d = Math.hypot(s.x-x, s.y-y);
-    if(d < 20) return;
-  }
 
   addSnappedCircle(x,y);
 });
 
-// ===== LONG PRESS DELETE =====
-overlay.addEventListener("contextmenu", (e)=>{
-  e.preventDefault();
-
-  const rect = overlay.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-
-  samples = samples.filter(s=>{
-    const d = Math.hypot(s.x-x, s.y-y);
-    return d > s.r;
-  });
-
-  drawAll();
-  updateResult();
-});
-
-// ===== SNAP + ADD =====
+// ===== SNAP =====
 function addSnappedCircle(cx, cy){
 
-  const frame = getFrame();
-  const g = toGray(frame);
+  const frame = cachedFrame;
+  const g = cachedGray;
 
   const rect = overlay.getBoundingClientRect();
 
-  const scaleX = frame.width / rect.width;
-  const scaleY = frame.height / rect.height;
+  const scale = frame.width / rect.width;
 
-  let x = cx * scaleX;
-  let y = cy * scaleY;
-
-  let r = SAMPLE_RADIUS;
+  let x = cx * scale;
+  let y = cy * scale;
 
   let best = {x,y};
   let bestScore = Infinity;
 
-  // ===== CENTER SNAP =====
-  for(let dy=-8;dy<=8;dy++){
-    for(let dx=-8;dx<=8;dx++){
+  for(let dy=-6;dy<=6;dy++){
+    for(let dx=-6;dx<=6;dx++){
 
       let score = 0;
 
-      for(let a=0;a<360;a+=20){
+      for(let a=0;a<360;a+=30){
 
         const rad = a*Math.PI/180;
 
-        const px = Math.round(x+dx + r*Math.cos(rad));
-        const py = Math.round(y+dy + r*Math.sin(rad));
+        const px = Math.round(x+dx + SAMPLE_RADIUS*Math.cos(rad));
+        const py = Math.round(y+dy + SAMPLE_RADIUS*Math.sin(rad));
 
         if(px<0||py<0||px>=frame.width||py>=frame.height) continue;
 
-        const center = g[Math.round(y)*frame.width + Math.round(x)];
-        const edge   = g[py*frame.width + px];
-
-        score += Math.abs(edge - center);
+        score += g[py*frame.width + px];
       }
 
       if(score < bestScore){
@@ -116,89 +123,28 @@ function addSnappedCircle(cx, cy){
     }
   }
 
-  // ===== RADIUS SNAP =====
-  let bestR = r;
-  let bestRScore = Infinity;
+  const ox = best.x / scale;
+  const oy = best.y / scale;
 
-  for(let rr=18; rr<=35; rr++){
+  const rgb = readRGB(frame, ox, oy, SAMPLE_RADIUS);
 
-    let score = 0;
-
-    for(let a=0;a<360;a+=20){
-
-      const rad = a*Math.PI/180;
-
-      const px = Math.round(best.x + rr*Math.cos(rad));
-      const py = Math.round(best.y + rr*Math.sin(rad));
-
-      if(px<0||py<0||px>=frame.width||py>=frame.height) continue;
-
-      score += g[py*frame.width + px];
-    }
-
-    if(score < bestRScore){
-      bestRScore = score;
-      bestR = rr;
-    }
-  }
-
-  // ===== MAP BACK =====
-  const ox = best.x / scaleX;
-  const oy = best.y / scaleY;
-  const or = bestR / scaleX;
-
-  const rgb = readRGB(ox, oy, or);
-
-  samples.push({
-    x:ox,
-    y:oy,
-    r:or,
-    rgb
-  });
+  samples.push({x:ox,y:oy,r:SAMPLE_RADIUS,rgb});
 
   drawAll();
   updateResult();
 }
 
-// ===== FRAME =====
-function getFrame(){
-  const c=document.createElement("canvas");
-  c.width=video.videoWidth;
-  c.height=video.videoHeight;
-  const ctx=c.getContext("2d");
-  ctx.drawImage(video,0,0);
-  return ctx.getImageData(0,0,c.width,c.height);
-}
-
-// ===== GRAY =====
-function toGray(img){
-  const g=new Uint8ClampedArray(img.width*img.height);
-  for(let i=0,j=0;i<img.data.length;i+=4,j++){
-    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
-  }
-  return g;
-}
-
 // ===== RGB =====
-function readRGB(cx, cy, r){
-
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video,0,0);
-
-  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+function readRGB(frame, cx, cy, r){
 
   let R=0,G=0,B=0,count=0;
 
-  const scaleX = canvas.width / overlay.width;
-  const scaleY = canvas.height / overlay.height;
+  const rect = overlay.getBoundingClientRect();
+  const scale = frame.width / rect.width;
 
-  const x0 = cx * scaleX;
-  const y0 = cy * scaleY;
-  const rr = r * scaleX;
+  const x0 = cx * scale;
+  const y0 = cy * scale;
+  const rr = r * scale;
 
   for(let y=-rr;y<=rr;y++){
     for(let x=-rr;x<=rr;x++){
@@ -208,13 +154,13 @@ function readRGB(cx, cy, r){
         const px = Math.floor(x0 + x);
         const py = Math.floor(y0 + y);
 
-        if(px<0||py<0||px>=canvas.width||py>=canvas.height) continue;
+        if(px<0||py<0||px>=frame.width||py>=frame.height) continue;
 
-        const i = (py*canvas.width + px)*4;
+        const i = (py*frame.width + px)*4;
 
-        R += img.data[i];
-        G += img.data[i+1];
-        B += img.data[i+2];
+        R += frame.data[i];
+        G += frame.data[i+1];
+        B += frame.data[i+2];
         count++;
       }
     }
@@ -227,6 +173,60 @@ function readRGB(cx, cy, r){
   };
 }
 
+// ===== GRAY =====
+function toGray(img){
+  const g=new Uint8ClampedArray(img.width*img.height);
+  for(let i=0,j=0;i<img.data.length;i+=4,j++){
+    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
+  }
+  return g;
+}
+
+// ===== CONTROL =====
+function setNormal(){
+  control.normal = samples[samples.length-1];
+  updateResult();
+}
+
+function setDeficient(){
+  control.deficient = samples[samples.length-1];
+  updateResult();
+}
+
+// ===== INTENSITY =====
+function intensity(rgb){
+  return rgb.g;
+}
+
+// ===== CALCULATE =====
+function calculate(){
+
+  if(!control.normal || !control.deficient){
+    return {valid:false};
+  }
+
+  const N = intensity(control.normal.rgb);
+  const D = intensity(control.deficient.rgb);
+
+  let valid = true;
+  if(N <= D) valid = false;
+
+  let results = samples.map((s,i)=>{
+
+    const S = intensity(s.rgb);
+
+    let ratio = (S - D) / ((N - D) + 0.001);
+
+    let res="Deficient";
+    if(ratio > 0.8) res="Normal";
+    else if(ratio > 0.4) res="Partial";
+
+    return {i,ratio:ratio.toFixed(2),res};
+  });
+
+  return {valid,N,D,results};
+}
+
 // ===== DRAW =====
 function drawAll(){
 
@@ -236,25 +236,32 @@ function drawAll(){
   samples.forEach((s,i)=>{
 
     ctx.strokeStyle="lime";
-    ctx.lineWidth=2;
-
     ctx.beginPath();
     ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
     ctx.stroke();
 
     ctx.fillStyle="yellow";
-    ctx.font="12px Arial";
-    ctx.fillText(`#${i}`, s.x+5, s.y-5);
+    ctx.fillText(i, s.x+5, s.y);
   });
 }
 
 // ===== RESULT =====
 function updateResult(){
 
-  let txt = "";
+  let txt="";
 
-  samples.forEach((s,i)=>{
-    txt += `#${i} → R:${s.rgb.r} G:${s.rgb.g} B:${s.rgb.b}\n`;
+  const calc = calculate();
+
+  if(!calc.valid){
+    txt += "INVALID (control ผิด)\n";
+    resultBox.textContent = txt;
+    return;
+  }
+
+  txt += `N:${calc.N} D:${calc.D}\n`;
+
+  calc.results.forEach(r=>{
+    txt += `#${r.i} → ${r.res} (${r.ratio})\n`;
   });
 
   resultBox.textContent = txt;
