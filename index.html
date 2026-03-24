@@ -3,46 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>G6PD Analyzer Pro</title>
-
-<link rel="manifest" href="manifest.json">
+<title>G6PD Analyzer AI</title>
 
 <style>
-body {
-  background:black;
-  color:white;
-  text-align:center;
-  font-family:Arial;
-}
+body { background:black; color:white; text-align:center; font-family:Arial; }
 
 .container {
   position:relative;
-  display:inline-block;
-}
-
-video {
   width:320px;
-  background:black;
+  margin:auto;
+  overflow:hidden;
+  touch-action:none;
 }
 
-#overlay {
+video, canvas {
   position:absolute;
   top:0;
   left:0;
+  width:100%;
 }
 
-button {
-  margin:5px;
-  padding:10px;
-}
+button { margin:5px; padding:10px; }
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer Pro</h3>
+<h3>G6PD Analyzer AI</h3>
 
-<div class="container">
+<div class="container" id="viewer">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
 </div>
@@ -50,25 +39,22 @@ button {
 <br>
 
 <button onclick="startCamera()">Start</button>
-<button onclick="stopCamera()">Stop</button>
 <button onclick="captureFrame()">Capture</button>
-<button onclick="resetSamples()">Reset</button>
-<button onclick="undo()">Undo</button>
+<button onclick="stopCamera()">Stop</button>
 
 <br>
 
-<button onclick="setNormal()">Set Normal (N)</button>
-<button onclick="setDeficient()">Set Deficient (D)</button>
+<button onclick="autoDetect()">Auto Detect</button>
+<button onclick="autoAssignControl()">Auto Control</button>
+
+<br>
+
+<button onclick="resetSamples()">Reset</button>
 
 <pre id="result"></pre>
 
 <script src="app.js"></script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
-</script>
+<script src="ai.js"></script>
 
 </body>
 </html>
