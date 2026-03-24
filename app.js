@@ -3,12 +3,11 @@ const overlay = document.getElementById("overlay");
 
 let stream=null;
 let grid=[];
-let locked=false;
 
 // ===== CAMERA =====
 async function startCamera(){
   stream = await navigator.mediaDevices.getUserMedia({
-    video:{facingMode:{ideal:"environment"}}
+    video:{ facingMode:{ideal:"environment"} }
   });
   video.srcObject = stream;
 
@@ -31,7 +30,7 @@ function syncCanvas(){
   overlay.height = rect.height;
 }
 
-// ===== GET FRAME =====
+// ===== FRAME =====
 function getFrame(){
   const c=document.createElement("canvas");
   c.width=video.videoWidth;
@@ -41,7 +40,8 @@ function getFrame(){
   return ctx.getImageData(0,0,c.width,c.height);
 }
 
-function toGray(img){
+// ===== GRAYSCALE =====
+function gray(img){
   const g=new Uint8ClampedArray(img.width*img.height);
   for(let i=0,j=0;i<img.data.length;i+=4,j++){
     g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
@@ -49,32 +49,23 @@ function toGray(img){
   return g;
 }
 
-// ===== EDGE =====
-function edgeDetect(gray,w,h){
-  const e=new Uint8ClampedArray(w*h);
-  for(let y=1;y<h-1;y++){
-    for(let x=1;x<w-1;x++){
-      const i=y*w+x;
-      const gx=-gray[i-w-1]-2*gray[i-1]-gray[i+w-1]
-               +gray[i-w+1]+2*gray[i+1]+gray[i+w+1];
-      const gy=-gray[i-w-1]-2*gray[i-w]-gray[i-w+1]
-               +gray[i+w-1]+2*gray[i+w]+gray[i+w+1];
-      const g=Math.sqrt(gx*gx+gy*gy);
-      e[i]=g>60?255:0;
-    }
+// ===== THRESHOLD (adaptive แบบง่าย) =====
+function threshold(g,w,h){
+  const out=new Uint8ClampedArray(w*h);
+  for(let i=0;i<g.length;i++){
+    out[i]=g[i]<180?255:0;
   }
-  return e;
+  return out;
 }
 
-// ===== PAPER DETECT (QUAD) =====
-function detectPaper(gray,w,h){
-  const e=edgeDetect(gray,w,h);
+// ===== DETECT PAPER (improved) =====
+function detectPaper(bin,w,h){
 
-  let minX=w,minY=h,maxX=0,maxY=0;
+  let minX=w, minY=h, maxX=0, maxY=0;
 
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
-      if(e[y*w+x]){
+      if(bin[y*w+x]){
         if(x<minX)minX=x;
         if(y<minY)minY=y;
         if(x>maxX)maxX=x;
@@ -83,175 +74,131 @@ function detectPaper(gray,w,h){
     }
   }
 
-  return [
-    {x:minX,y:minY},
-    {x:maxX,y:minY},
-    {x:maxX,y:maxY},
-    {x:minX,y:maxY}
-  ];
+  return {minX,minY,maxX,maxY};
 }
 
-// ===== HOMOGRAPHY (approx crop+scale) =====
-function warpPaper(frame,quad){
+// ===== NORMALIZE (สำคัญ) =====
+function normalize(frame,box){
 
   const ratio=7/12.6;
-  const H=400;
+  const H=500;
   const W=Math.round(H*ratio);
 
   const c=document.createElement("canvas");
-  c.width=W; c.height=H;
+  c.width=W;
+  c.height=H;
+
   const ctx=c.getContext("2d");
 
-  const minX=quad[0].x;
-  const minY=quad[0].y;
-  const maxX=quad[2].x;
-  const maxY=quad[2].y;
-
   ctx.drawImage(video,
-    minX,minY,
-    maxX-minX,maxY-minY,
+    box.minX, box.minY,
+    box.maxX-box.minX,
+    box.maxY-box.minY,
     0,0,W,H
   );
 
   return ctx.getImageData(0,0,W,H);
 }
 
-// ===== CIRCLE DETECT =====
-function detectCircles(gray,w,h){
+// ===== TEMPLATE GRID (FIXED) =====
+function createTemplate(w,h){
 
-  const edge=edgeDetect(gray,w,h);
+  const rows=6;
+  const cols=4;
+
+  const marginX=w*0.15;
+  const marginY=h*0.12;
+
+  const stepX=(w-2*marginX)/(cols-1);
+  const stepY=(h-2*marginY)/(rows-1);
+
   const circles=[];
 
-  for(let y=20;y<h-20;y+=4){
-    for(let x=20;x<w-20;x+=4){
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
 
-      let bestR=0,score=0;
-
-      for(let r=10;r<25;r+=2){
-        let hit=0;
-
-        for(let a=0;a<360;a+=30){
-          const rad=a*Math.PI/180;
-          const px=Math.round(x+r*Math.cos(rad));
-          const py=Math.round(y+r*Math.sin(rad));
-          if(edge[py*w+px]) hit++;
-        }
-
-        if(hit>6){score++; bestR=r;}
-      }
-
-      if(score>=2){
-        circles.push({x,y,r:bestR});
-      }
+      circles.push({
+        x:marginX + c*stepX,
+        y:marginY + r*stepY,
+        r:stepX*0.28
+      });
     }
   }
 
   return circles;
 }
 
-// ===== MERGE =====
-function mergeCircles(c){
-  const out=[];
-  c.forEach(p=>{
-    let found=false;
-    for(let o of out){
-      const d=Math.hypot(p.x-o.x,p.y-o.y);
-      if(d<20){
-        o.x=(o.x+p.x)/2;
-        o.y=(o.y+p.y)/2;
-        o.r=(o.r+p.r)/2;
-        found=true;
-        break;
+// ===== SCORE วง (ใช้ intensity จริง) =====
+function scoreCircle(g,w,h,c){
+
+  let sum=0,count=0;
+
+  for(let y=-c.r;y<=c.r;y++){
+    for(let x=-c.r;x<=c.r;x++){
+
+      const dx=c.x+x;
+      const dy=c.y+y;
+
+      if(dx<0||dy<0||dx>=w||dy>=h) continue;
+
+      if(x*x+y*y <= c.r*c.r){
+        sum+=g[Math.floor(dy)*w+Math.floor(dx)];
+        count++;
       }
     }
-    if(!found) out.push({...p});
-  });
-  return out;
-}
-
-// ===== GRID =====
-function buildGrid(circles){
-
-  circles.sort((a,b)=>a.y-b.y);
-  const rows=[];
-
-  while(circles.length){
-    const base=circles.shift();
-    const row=[base];
-
-    for(let i=circles.length-1;i>=0;i--){
-      if(Math.abs(circles[i].y-base.y)<25){
-        row.push(circles[i]);
-        circles.splice(i,1);
-      }
-    }
-
-    row.sort((a,b)=>a.x-b.x);
-    rows.push(row);
   }
 
-  return rows;
+  return sum/count;
 }
 
-// ===== MAP BACK =====
-function mapToOverlay(rows,quad,warpW,warpH){
+// ===== AUTO ALIGN (สำคัญมาก) =====
+function refineGrid(g,w,h,grid){
 
-  grid=[];
-  const rect=video.getBoundingClientRect();
+  grid.forEach(c=>{
 
-  const scaleX=rect.width/warpW;
-  const scaleY=rect.height/warpH;
+    let best=c;
+    let bestScore=999;
 
-  let idx=0;
+    for(let dy=-5;dy<=5;dy++){
+      for(let dx=-5;dx<=5;dx++){
 
-  rows.forEach(r=>{
-    r.forEach(p=>{
-      grid.push({
-        index:idx++,
-        x:p.x*scaleX,
-        y:p.y*scaleY,
-        r:p.r*scaleX
-      });
-    });
-  });
-}
+        const test={
+          x:c.x+dx,
+          y:c.y+dy,
+          r:c.r
+        };
 
-// ===== LSQ refine =====
-function refineLSQ(){
+        const s=scoreCircle(g,w,h,test);
 
-  const frame=getFrame();
-  const gray=toGray(frame);
-  const edge=edgeDetect(gray,frame.width,frame.height);
-
-  grid.forEach(g=>{
-
-    const pts=[];
-
-    for(let a=0;a<360;a+=20){
-      const rad=a*Math.PI/180;
-      const px=Math.round(g.x+g.r*Math.cos(rad));
-      const py=Math.round(g.y+g.r*Math.sin(rad));
-
-      if(edge[py*frame.width+px]){
-        pts.push([px,py]);
+        if(s<bestScore){
+          bestScore=s;
+          best=test;
+        }
       }
     }
 
-    if(pts.length<6) return;
-
-    let mx=0,my=0;
-    pts.forEach(p=>{mx+=p[0];my+=p[1];});
-    mx/=pts.length; my/=pts.length;
-
-    g.x=mx;
-    g.y=my;
+    c.x=best.x;
+    c.y=best.y;
   });
+}
 
-  draw();
+// ===== MAP TO SCREEN =====
+function mapToScreen(grid,w,h){
+
+  const rect=video.getBoundingClientRect();
+
+  const sx=rect.width/w;
+  const sy=rect.height/h;
+
+  return grid.map(g=>({
+    x:g.x*sx,
+    y:g.y*sy,
+    r:g.r*sx
+  }));
 }
 
 // ===== DRAW =====
-function draw(){
+function draw(grid){
 
   const ctx=overlay.getContext("2d");
   ctx.clearRect(0,0,overlay.width,overlay.height);
@@ -259,9 +206,9 @@ function draw(){
   ctx.strokeStyle="lime";
   ctx.lineWidth=2;
 
-  grid.forEach(g=>{
+  grid.forEach(c=>{
     ctx.beginPath();
-    ctx.arc(g.x,g.y,g.r,0,Math.PI*2);
+    ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
     ctx.stroke();
   });
 }
@@ -270,20 +217,24 @@ function draw(){
 function detectAndLock(){
 
   const frame=getFrame();
-  const gray=toGray(frame);
+  const g=gray(frame);
+  const bin=threshold(g,frame.width,frame.height);
 
-  const quad=detectPaper(gray,frame.width,frame.height);
+  // 1 detect paper
+  const box=detectPaper(bin,frame.width,frame.height);
 
-  const warp=warpPaper(frame,quad);
-  const g2=toGray(warp);
+  // 2 normalize
+  const norm=normalize(frame,box);
+  const g2=gray(norm);
 
-  let circles=detectCircles(g2,warp.width,warp.height);
-  circles=mergeCircles(circles);
+  // 3 template
+  let template=createTemplate(norm.width,norm.height);
 
-  const rows=buildGrid(circles);
+  // 4 refine align (สำคัญ)
+  refineGrid(g2,norm.width,norm.height,template);
 
-  mapToOverlay(rows,quad,warp.width,warp.height);
+  // 5 map
+  const mapped=mapToScreen(template,norm.width,norm.height);
 
-  locked=true;
-  draw();
+  draw(mapped);
 }
