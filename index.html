@@ -8,6 +8,7 @@
 <style>
 body { background:black; color:white; text-align:center; font-family:Arial; }
 
+/* container */
 .container {
   position:relative;
   width:320px;
@@ -16,11 +17,25 @@ body { background:black; color:white; text-align:center; font-family:Arial; }
   touch-action:none;
 }
 
-video, canvas {
+/* 🔥 ห้าม transform video */
+video {
+  width:100%;
+  position:relative;
+  z-index:1;
+}
+
+/* overlay */
+#overlay {
   position:absolute;
   top:0;
   left:0;
   width:100%;
+  z-index:2;
+}
+
+/* zoom target */
+#stage {
+  transform-origin:center center;
 }
 
 button { margin:5px; padding:10px; }
@@ -31,9 +46,11 @@ button { margin:5px; padding:10px; }
 
 <h3>G6PD Analyzer AI</h3>
 
-<div class="container" id="viewer">
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="overlay"></canvas>
+<div class="container">
+  <div id="stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
 </div>
 
 <br>
