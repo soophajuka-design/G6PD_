@@ -16,6 +16,8 @@ let selectMode = null;
 
 // ===== CAMERA =====
 async function startCamera(){
+  
+  
   stream = await navigator.mediaDevices.getUserMedia({
     video:{ facingMode:{ ideal:"environment" } }
   });
@@ -23,9 +25,10 @@ async function startCamera(){
   video.srcObject = stream;
 
   video.onloadedmetadata = ()=>{
-    video.play();
-    syncCanvas();
-  };
+  console.log("video size:", video.videoWidth, video.videoHeight);
+  video.play();
+  syncCanvas();
+};
 }
 
 function stopCamera(){
