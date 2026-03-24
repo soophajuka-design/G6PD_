@@ -864,3 +864,139 @@ function autoDetectControl(results){
   };
 }
 
+function detectPaper(){
+
+  const canvas = captureFrame();
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const data = img.data;
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  // convert to grayscale
+  const gray = [];
+  for(let i=0;i<data.length;i+=4){
+    gray.push((data[i]+data[i+1]+data[i+2])/3);
+  }
+
+  // threshold (หา background ขาว)
+  const bin = gray.map(v => v > 200 ? 1 : 0);
+
+  // หา bounding box ของกระดาษ
+  let minX=W, minY=H, maxX=0, maxY=0;
+
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const i = y*W+x;
+
+      if(bin[i] === 1){
+        if(x<minX) minX=x;
+        if(x>maxX) maxX=x;
+        if(y<minY) minY=y;
+        if(y>maxY) maxY=y;
+      }
+    }
+  }
+
+  return {
+    x:minX,
+    y:minY,
+    w:maxX-minX,
+    h:maxY-minY,
+    canvas
+  };
+}
+function rectifyPaper(){
+
+  const box = detectPaper();
+
+  const targetW = 700;
+  const targetH = 1260;
+
+  const out = document.createElement("canvas");
+  out.width = targetW;
+  out.height = targetH;
+
+  const ctx = out.getContext("2d");
+
+  ctx.drawImage(
+    box.canvas,
+    box.x, box.y, box.w, box.h,
+    0, 0, targetW, targetH
+  );
+
+  window.rectifiedCanvas = out;
+
+  return out;
+}
+function generatePaperGrid(){
+
+  const canvas = window.rectifiedCanvas;
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const cols = 4;
+  const rows = 6;
+
+  const marginX = W * 0.08;
+  const marginY = H * 0.06;
+
+  const stepX = (W - marginX*2) / cols;
+  const stepY = (H - marginY*2) / rows;
+
+  const grid = [];
+
+  let idx = 0;
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+
+      grid.push({
+        index: idx++,
+        x: marginX + stepX*(c+0.5),
+        y: marginY + stepY*(r+0.5),
+        r: Math.min(stepX,stepY)*0.32
+      });
+
+    }
+  }
+
+  window.grid = grid;
+}
+function drawOverlay(){
+
+  const ctx = overlay.getContext("2d");
+
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
+
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+
+  const box = detectPaper();
+
+  const scaleX = box.w / rectifiedCanvas.width;
+  const scaleY = box.h / rectifiedCanvas.height;
+
+  ctx.strokeStyle = "lime";
+  ctx.lineWidth = 2;
+  ctx.font = "14px Arial";
+
+  grid.forEach(g=>{
+
+    const x = box.x + g.x * scaleX;
+    const y = box.y + g.y * scaleY;
+    const r = g.r * scaleX;
+
+    ctx.beginPath();
+    ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.stroke();
+
+    ctx.fillStyle = "yellow";
+    ctx.fillText(g.index, x+4, y+4);
+
+  });
+
+}
+
+
