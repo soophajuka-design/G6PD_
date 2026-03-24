@@ -43,23 +43,56 @@ function syncCanvas(){
 }
 
 // ===== CAPTURE (ONLY ONCE) =====
+
+
 async function captureFrame(){
 
-  resultBox.textContent = "⏳ Stabilizing...";
+  if(!video.srcObject){
+    resultBox.textContent = "⚠️ กล้องยังไม่เริ่ม";
+    return;
+  }
 
-  await new Promise(r => setTimeout(r, 800));
+  resultBox.textContent = "⏳ Capturing...";
+
+  // 🔥 รอ video ready จริง
+  if(video.readyState < 2){
+    await new Promise(resolve=>{
+      video.onloadeddata = () => resolve();
+    });
+  }
+
+  // 🔥 รอ frame stabilize (สำคัญบน iPad)
+  await new Promise(r => setTimeout(r, 300));
+
+  // 🔥 ใช้ขนาดจริงจาก video
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+
+  if(!w || !h){
+    resultBox.textContent = "❌ ไม่สามารถอ่านขนาด video";
+    return;
+  }
 
   const c = document.createElement("canvas");
-  c.width = video.videoWidth;
-  c.height = video.videoHeight;
+  c.width = w;
+  c.height = h;
 
   const ctx = c.getContext("2d");
-  ctx.drawImage(video,0,0);
 
-  cachedFrame = ctx.getImageData(0,0,c.width,c.height);
-  cachedGray = toGray(cachedFrame);
+  // 🔥 กัน mirror (iOS บางกรณี)
+  ctx.save();
+  ctx.scale(1,1);
+  ctx.drawImage(video,0,0,w,h);
+  ctx.restore();
 
-  resultBox.textContent = "✅ Captured — ready";
+  try{
+    cachedFrame = ctx.getImageData(0,0,w,h);
+    cachedGray = toGray(cachedFrame);
+    resultBox.textContent = "✅ Capture สำเร็จ";
+  }catch(e){
+    console.log(e);
+    resultBox.textContent = "❌ Capture error";
+  }
 }
 
 // ===== TAP =====
