@@ -607,3 +607,190 @@ function analyzeG6PD(results){
     alert("Invalid test run กรุณาทดสอบใหม่");
   }
 }
+function preprocess(canvas){
+
+  const ctx = canvas.getContext("2d");
+  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+  const data = img.data;
+
+  const bin = [];
+
+  for(let y=0; y<canvas.height; y++){
+    for(let x=0; x<canvas.width; x++){
+
+      const i = (y*canvas.width + x)*4;
+
+      const r = data[i];
+      const g = data[i+1];
+      const b = data[i+2];
+
+      const gray = (r+g+b)/3;
+
+      // threshold ปรับได้
+      const val = gray < 200 ? 1 : 0;
+
+      bin.push(val);
+
+    }
+  }
+
+  return bin;
+}
+function findEdgePoints(bin, W, H){
+
+  const edges = [];
+
+  for(let y=1; y<H-1; y+=2){
+    for(let x=1; x<W-1; x+=2){
+
+      const i = y*W + x;
+
+      const v = bin[i];
+
+      // detect edge
+      if(v === 1){
+
+        const neighbors =
+          bin[i-1] + bin[i+1] +
+          bin[i-W] + bin[i+W];
+
+        if(neighbors < 4){
+          edges.push({x,y});
+        }
+
+      }
+
+    }
+  }
+
+  return edges;
+}
+
+function detectCircles(){
+
+  const canvas = getWorkingCanvas();
+
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const bin = preprocess(canvas);
+  const edges = findEdgePoints(bin, W, H);
+
+  const circles = [];
+  const minR = W * 0.04;
+  const maxR = W * 0.12;
+
+  for(let i=0; i<edges.length; i+=20){
+
+    const p = edges[i];
+
+    for(let r=minR; r<maxR; r+=5){
+
+      let count = 0;
+      let total = 0;
+
+      for(let a=0; a<360; a+=20){
+
+        const rad = a * Math.PI/180;
+
+        const x = Math.floor(p.x + r*Math.cos(rad));
+        const y = Math.floor(p.y + r*Math.sin(rad));
+
+        if(x<0||y<0||x>=W||y>=H) continue;
+
+        const idx = y*W + x;
+
+        total++;
+
+        if(bin[idx] === 1){
+          count++;
+        }
+
+      }
+
+      const score = count / total;
+
+      if(score > 0.6){
+
+        circles.push({
+          x:p.x,
+          y:p.y,
+          r:r,
+          score
+        });
+
+      }
+
+    }
+  }
+
+  debug("Raw circles: " + circles.length);
+
+  const final = mergeCircles(circles);
+
+  window.grid = final;
+
+  drawCircles(final);
+}
+
+function mergeCircles(circles){
+
+  const result = [];
+  const dist = 30;
+
+  circles.forEach(c=>{
+
+    let found = false;
+
+    for(let r of result){
+
+      const dx = r.x - c.x;
+      const dy = r.y - c.y;
+
+      if(Math.sqrt(dx*dx + dy*dy) < dist){
+
+        r.x = (r.x + c.x)/2;
+        r.y = (r.y + c.y)/2;
+        r.r = (r.r + c.r)/2;
+        r.score = Math.max(r.score, c.score);
+
+        found = true;
+        break;
+      }
+    }
+
+    if(!found){
+      result.push({...c});
+    }
+
+  });
+
+  debug("Final circles: " + result.length);
+
+  return result;
+}
+
+function drawCircles(circles){
+
+  const ctx = overlay.getContext("2d");
+
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
+
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+
+  ctx.strokeStyle = "red";
+  ctx.fillStyle = "yellow";
+
+  circles.forEach((c,i)=>{
+
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
+    ctx.stroke();
+
+    ctx.fillText(i, c.x+5, c.y+5);
+
+  });
+
+}
+
