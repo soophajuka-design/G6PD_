@@ -562,19 +562,17 @@ function readG6PD(){
 }
 function analyzeG6PD(results){
 
-  const normalIdx = parseInt(document.getElementById("normalIdx")?.value || 0);
-  const defIdx = parseInt(document.getElementById("defIdx")?.value || 1);
+  const ctrl = autoDetectControl(results);
 
-  const normal = results[normalIdx]?.brightness;
-  const deficient = results[defIdx]?.brightness;
-
-  if(!normal || !deficient){
-    alert("Control ไม่ครบ");
+  if(!ctrl){
+    alert("หา control ไม่ได้");
     return;
   }
 
-  let txt = "";
+  const normal = ctrl.normVal;
+  const deficient = ctrl.defVal;
 
+  let txt = "";
   let validity = "VALID";
 
   results.forEach(r=>{
@@ -590,14 +588,23 @@ function analyzeG6PD(results){
       else if(ratio > 0.4) res = "Partial Deficient";
       else res = "Complete Deficient";
 
-      // ===== validate control =====
-      if(r.index === normalIdx && res !== "Normal") validity="INVALID";
-      if(r.index === defIdx && res !== "Complete Deficient") validity="INVALID";
+      // ===== VALIDATION CONTROL =====
+      if(r.index === ctrl.normalIdx && res !== "Normal"){
+        validity = "INVALID";
+      }
+
+      if(r.index === ctrl.defIdx && res !== "Complete Deficient"){
+        validity = "INVALID";
+      }
     }
 
     txt += `#${r.index} → ${res} (B=${Math.round(r.brightness)})\n`;
 
   });
+
+  txt += `\nAuto Control:
+C+ = #${ctrl.normalIdx}
+C- = #${ctrl.defIdx}`;
 
   txt += "\n=== RESULT: " + validity + " ===";
 
@@ -607,6 +614,7 @@ function analyzeG6PD(results){
     alert("Invalid test run กรุณาทดสอบใหม่");
   }
 }
+
 function preprocess(canvas){
 
   const ctx = canvas.getContext("2d");
@@ -827,5 +835,32 @@ function drawCenter(){
   ctx.moveTo(0, overlay.height/2);
   ctx.lineTo(overlay.width, overlay.height/2);
   ctx.stroke();
+}
+function autoDetectControl(results){
+
+  // เอาเฉพาะที่ valid
+  const valid = results.filter(r => r.status !== "ND");
+
+  if(valid.length < 3){
+    alert("ข้อมูลไม่พอ");
+    return null;
+  }
+
+  // sort ตาม brightness
+  valid.sort((a,b)=>a.brightness - b.brightness);
+
+  // ใช้ percentile กัน noise
+  const lowIdx = Math.floor(valid.length * 0.1);
+  const highIdx = Math.floor(valid.length * 0.9);
+
+  const deficient = valid[lowIdx];
+  const normal = valid[highIdx];
+
+  return {
+    defIdx: deficient.index,
+    normalIdx: normal.index,
+    defVal: deficient.brightness,
+    normVal: normal.brightness
+  };
 }
 
