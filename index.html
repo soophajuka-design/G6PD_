@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 body { background:black; color:white; text-align:center; }
 
@@ -13,22 +14,32 @@ body { background:black; color:white; text-align:center; }
 
 video, canvas{
   width:100%;
+  display:block;
 }
 
-canvas{
+#freeze{
   position:absolute;
   top:0;
   left:0;
+  z-index:2;
+}
+
+#overlay{
+  position:absolute;
+  top:0;
+  left:0;
+  z-index:3;
 }
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Stable Mode</h3>
+<h3>G6PD Stable iPad Fix</h3>
 
 <div class="container">
   <video id="video" autoplay playsinline muted></video>
+  <canvas id="freeze"></canvas>
   <canvas id="overlay"></canvas>
 </div>
 
@@ -42,8 +53,6 @@ canvas{
 
 <button onclick="autoGrid()">Auto Grid</button>
 <button onclick="reset()">Reset</button>
-
-<pre id="result"></pre>
 
 <script src="app.js"></script>
 
