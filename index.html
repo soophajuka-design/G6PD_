@@ -40,6 +40,7 @@ video, canvas{
 
 <button onclick="start()">Start</button>
 <button onclick="capture()">Capture</button>
+<button onclick="drawTemplateGrid()">Template Grid</button>
 <button onclick="autoAlign()">Auto Align</button>
 <button onclick="reset()">Reset</button>
 
@@ -204,6 +205,91 @@ function autoAlign(){
   log.innerText="aligned";
 }
 
+function drawTemplateGrid(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // ===== draw background (frame) =====
+  if(frame){
+    const temp=document.createElement("canvas");
+    temp.width=frame.width;
+    temp.height=frame.height;
+    temp.getContext("2d").putImageData(frame,0,0);
+
+    ctx.drawImage(temp,0,0,canvas.width,canvas.height);
+  }
+
+  const cols = 4;
+  const rows = 5;
+
+  const vw = canvas.width;
+  const vh = canvas.height;
+
+  // 🔥 margin ให้เห็นขอบกระดาษ
+  const margin = 0.15;
+
+  const usableW = vw * (1 - margin*2);
+  const usableH = vh * (1 - margin*2);
+
+  // 🔥 lock ratio กระดาษจริง
+  const ratio = 7.1 / 12.8;
+
+  let gridW = usableW;
+  let gridH = gridW / ratio;
+
+  if(gridH > usableH){
+    gridH = usableH;
+    gridW = gridH * ratio;
+  }
+
+  const offsetX = (vw - gridW)/2;
+  const offsetY = (vh - gridH)/2;
+
+  const cellW = gridW / cols;
+  const cellH = gridH / rows;
+
+  // ===== outer frame =====
+  ctx.strokeStyle="white";
+  ctx.lineWidth=2;
+  ctx.strokeRect(offsetX,offsetY,gridW,gridH);
+
+  // ===== grid =====
+  ctx.strokeStyle="rgba(255,255,255,0.5)";
+  ctx.lineWidth=1;
+
+  for(let i=1;i<cols;i++){
+    ctx.beginPath();
+    ctx.moveTo(offsetX+i*cellW,offsetY);
+    ctx.lineTo(offsetX+i*cellW,offsetY+gridH);
+    ctx.stroke();
+  }
+
+  for(let j=1;j<rows;j++){
+    ctx.beginPath();
+    ctx.moveTo(offsetX,offsetY+j*cellH);
+    ctx.lineTo(offsetX+gridW,offsetY+j*cellH);
+    ctx.stroke();
+  }
+
+  // ===== circles =====
+  ctx.strokeStyle="lime";
+
+  const r = Math.min(cellW,cellH)*0.25;
+
+  for(let rIdx=0;rIdx<rows;rIdx++){
+    for(let cIdx=0;cIdx<cols;cIdx++){
+
+      const cx = offsetX + (cIdx+0.5)*cellW;
+      const cy = offsetY + (rIdx+0.5)*cellH;
+
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.stroke();
+    }
+  }
+
+  log.innerText="template grid";
+}
 // ===== RESET =====
 function reset(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
