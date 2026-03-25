@@ -2,11 +2,10 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 body { background:black; color:white; text-align:center; }
 
-.container{
+.wrap{
   position:relative;
   width:320px;
   margin:auto;
@@ -17,44 +16,146 @@ video, canvas{
   display:block;
 }
 
-#freeze{
+canvas{
   position:absolute;
   top:0;
   left:0;
-  z-index:2;
-}
-
-#overlay{
-  position:absolute;
-  top:0;
-  left:0;
-  z-index:3;
 }
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Stable iPad Fix</h3>
+<h3>DEBUG CAMERA FIX</h3>
 
-<div class="container">
+<div class="wrap">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="freeze"></canvas>
-  <canvas id="overlay"></canvas>
+  <canvas id="view"></canvas>
 </div>
 
 <br>
 
-<button onclick="startCamera()">Start</button>
+<button onclick="start()">Start</button>
 <button onclick="capture()">Capture</button>
-<button onclick="stopCamera()">Stop</button>
+<button onclick="testDraw()">Test Draw</button>
+<button onclick="clearAll()">Reset</button>
 
-<br>
+<p id="log"></p>
 
-<button onclick="autoGrid()">Auto Grid</button>
-<button onclick="reset()">Reset</button>
+<script>
 
-<script src="app.js"></script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("view");
+const ctx = canvas.getContext("2d");
+const log = document.getElementById("log");
+
+let stream=null;
+let frame=null;
+
+let scaleX=1;
+let scaleY=1;
+
+// ===== START =====
+async function start(){
+
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:"environment"}
+    });
+
+    video.srcObject = stream;
+
+    video.onloadedmetadata = () => {
+      video.play();
+
+      const rect = video.getBoundingClientRect();
+
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+
+      log.innerText="camera ready";
+    };
+
+  }catch(e){
+    log.innerText="camera error: "+e;
+  }
+}
+
+// ===== CAPTURE =====
+function capture(){
+
+  if(!video.videoWidth){
+    log.innerText="video not ready";
+    return;
+  }
+
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+
+  const temp = document.createElement("canvas");
+  temp.width = w;
+  temp.height = h;
+
+  const tctx = temp.getContext("2d");
+
+  // 🔥 สำคัญ: drawImage ต้องใช้ w,h
+  tctx.drawImage(video,0,0,w,h);
+
+  frame = tctx.getImageData(0,0,w,h);
+
+  // scale mapping
+  scaleX = w / canvas.width;
+  scaleY = h / canvas.height;
+
+  // 🔥 แสดงภาพนิ่งบน canvas
+  ctx.drawImage(temp,0,0,canvas.width,canvas.height);
+
+  log.innerText="captured OK";
+}
+
+// ===== TAP =====
+canvas.addEventListener("click",(e)=>{
+
+  if(!frame){
+    log.innerText="tap but no frame";
+    return;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+
+  const dx = e.clientX - rect.left;
+  const dy = e.clientY - rect.top;
+
+  const x = dx * scaleX;
+  const y = dy * scaleY;
+
+  // draw test circle
+  ctx.beginPath();
+  ctx.arc(dx,dy,15,0,Math.PI*2);
+  ctx.strokeStyle="red";
+  ctx.stroke();
+
+  log.innerText = `tap OK (${Math.round(x)}, ${Math.round(y)})`;
+});
+
+// ===== TEST DRAW =====
+function testDraw(){
+
+  ctx.beginPath();
+  ctx.arc(100,100,20,0,Math.PI*2);
+  ctx.strokeStyle="yellow";
+  ctx.stroke();
+
+  log.innerText="draw OK";
+}
+
+// ===== RESET =====
+function clearAll(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  log.innerText="reset";
+}
+
+</script>
 
 </body>
 </html>
