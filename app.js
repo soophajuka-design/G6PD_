@@ -44,4 +44,22 @@ function startLoop(){
   loop();
 }
 
+function resetApp() {
 
+  // reset grid
+  for(let r=0;r<5;r++){
+    for(let c=0;c<4;c++){
+      gridState[r][c] = {
+        selected:false,
+        type:"sample"
+      };
+    }
+  }
+
+  // clear overlay
+  if(ctx && overlay){
+    ctx.clearRect(0,0,overlay.width, overlay.height);
+  }
+
+  console.log("Reset complete");
+}
