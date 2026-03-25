@@ -93,11 +93,12 @@ async function start(){
 // ===== RESIZE (CRITICAL FIX) =====
 function resizeAll(){
 
-  const w = video.videoWidth;
-  const h = video.videoHeight;
+  const rect = video.getBoundingClientRect();
 
-  if(!w || !h) return;
+  const w = rect.width;
+  const h = rect.height;
 
+  // 🔥 ใช้ “ขนาดที่เห็นจริง”
   frameCanvas.width = w;
   frameCanvas.height = h;
 
@@ -113,23 +114,31 @@ function capture(){
     return;
   }
 
-  const w = video.videoWidth;
-  const h = video.videoHeight;
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
 
-  frameCanvas.width = w;
-  frameCanvas.height = h;
+  const cw = frameCanvas.width;
+  const ch = frameCanvas.height;
 
-  fctx.drawImage(video,0,0,w,h);
+  // 🔥 scale ตาม display
+  const scale = Math.max(cw / vw, ch / vh);
 
-  // 🔥 สำคัญ: ซ่อน video
+  const sw = cw / scale;
+  const sh = ch / scale;
+
+  const sx = (vw - sw) / 2;
+  const sy = (vh - sh) / 2;
+
+  fctx.drawImage(
+    video,
+    sx, sy, sw, sh,
+    0, 0, cw, ch
+  );
+
   video.style.display = "none";
-
-  // 🔥 แสดง frame
   frameCanvas.style.display = "block";
 
-  captured = true;
-
-  log.innerText="Captured ✔ (freeze)";
+  log.innerText="Captured ✔";
 }
 
 
