@@ -19,8 +19,7 @@ function drawGrid(canvas, ctx) {
   const h = canvas.height;
 
   ctx.clearRect(0,0,w,h);
-  ctx.lineWidth = 2;
-  // margin 10%
+
   const margin = 0.1;
 
   const usableW = w*(1-margin*2);
@@ -43,7 +42,9 @@ function drawGrid(canvas, ctx) {
   const cw = pw/cols;
   const ch = ph/rows;
 
-  // draw cells
+  ctx.lineWidth = 2;
+
+  // ===== draw cells =====
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
@@ -52,17 +53,26 @@ function drawGrid(canvas, ctx) {
 
       let cell = gridState[r][c];
 
-      // สีตามสถานะ
-      if(cell.type==="normal") ctx.strokeStyle="#22c55e";
-      else if(cell.type==="deficient") ctx.strokeStyle="#ef4444";
-      else if(cell.selected) ctx.strokeStyle="#facc15";
-      else ctx.strokeStyle="#00FFAA";
-
-      
+      // ===== สีตามสถานะ =====
+      if(cell.type==="normal") {
+        ctx.strokeStyle="#22c55e"; // เขียว
+      }
+      else if(cell.type==="deficient") {
+        ctx.strokeStyle="#ef4444"; // แดง
+      }
+      else if(cell.selected) {
+        ctx.strokeStyle="#facc15"; // เหลือง
+      }
+      else {
+        ctx.strokeStyle="#ffffff"; // ขาว (grid default)
+      }
+      ctx.shadowColor = "rgba(255,255,255,0.4)";
+      ctx.shadowBlur = 4;
       ctx.strokeRect(x,y,cw,ch);
 
-      // วงกลม
+      // ===== วงกลม (สีขาวจาง) =====
       ctx.beginPath();
+      ctx.strokeStyle="rgba(255,255,255,0.6)";
       ctx.arc(x+cw/2, y+ch/2, Math.min(cw,ch)*0.3, 0, 2*Math.PI);
       ctx.stroke();
     }
