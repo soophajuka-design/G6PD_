@@ -109,36 +109,32 @@ function resizeAll(){
 // ===== CAPTURE ONLY WHEN BUTTON PRESSED =====
 function capture(){
 
+  const rect = video.getBoundingClientRect();
+
+  const displayW = rect.width;
+  const displayH = rect.height;
+
   if(!video.videoWidth){
     log.innerText="Video not ready";
     return;
   }
 
-  const vw = video.videoWidth;
-  const vh = video.videoHeight;
+  // 🔥 ตั้ง canvas = ขนาดที่เห็นจริง
+  frameCanvas.width = displayW;
+  frameCanvas.height = displayH;
 
-  const cw = frameCanvas.width;
-  const ch = frameCanvas.height;
-
-  // 🔥 scale ตาม display
-  const scale = Math.max(cw / vw, ch / vh);
-
-  const sw = cw / scale;
-  const sh = ch / scale;
-
-  const sx = (vw - sw) / 2;
-  const sy = (vh - sh) / 2;
-
+  // 🔥 วาด “เหมือน browser render”
   fctx.drawImage(
     video,
-    sx, sy, sw, sh,
-    0, 0, cw, ch
+    0, 0, video.videoWidth, video.videoHeight,
+    0, 0, displayW, displayH
   );
 
+  // 🔥 freeze
   video.style.display = "none";
   frameCanvas.style.display = "block";
 
-  log.innerText="Captured ✔";
+  log.innerText="Captured ✔ (WYSIWYG)";
 }
 
 
