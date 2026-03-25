@@ -2,6 +2,7 @@ let mode = "select";
 
 function setMode(m) {
   mode = m;
+  console.log("Mode:", m);
 }
 
 let gridState = Array.from({length:5}, () =>
@@ -12,12 +13,15 @@ let gridState = Array.from({length:5}, () =>
 );
 
 function drawGrid(canvas, ctx) {
+
   const w = canvas.width;
   const h = canvas.height;
 
   ctx.clearRect(0,0,w,h);
 
+  // margin 10%
   const margin = 0.1;
+
   const usableW = w*(1-margin*2);
   const usableH = h*(1-margin*2);
 
@@ -38,44 +42,53 @@ function drawGrid(canvas, ctx) {
   const cw = pw/cols;
   const ch = ph/rows;
 
-  ctx.strokeStyle="#00FFAA";
-
-  for(let i=0;i<=cols;i++){
-    ctx.beginPath();
-    ctx.moveTo(sx+i*cw, sy);
-    ctx.lineTo(sx+i*cw, sy+ph);
-    ctx.stroke();
-  }
-
-  for(let j=0;j<=rows;j++){
-    ctx.beginPath();
-    ctx.moveTo(sx, sy+j*ch);
-    ctx.lineTo(sx+pw, sy+j*ch);
-    ctx.stroke();
-  }
-
-  // circles
+  // draw cells
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
-      let cx = sx+c*cw+cw/2;
-      let cy = sy+r*ch+ch/2;
 
+      let x = sx + c*cw;
+      let y = sy + r*ch;
+
+      let cell = gridState[r][c];
+
+      // สีตามสถานะ
+      if(cell.type==="normal") ctx.strokeStyle="lime";
+      else if(cell.type==="deficient") ctx.strokeStyle="red";
+      else if(cell.selected) ctx.strokeStyle="yellow";
+      else ctx.strokeStyle="#00FFAA";
+
+      ctx.strokeRect(x,y,cw,ch);
+
+      // วงกลม
       ctx.beginPath();
-      ctx.arc(cx,cy,Math.min(cw,ch)*0.3,0,2*Math.PI);
+      ctx.arc(x+cw/2, y+ch/2, Math.min(cw,ch)*0.3, 0, 2*Math.PI);
       ctx.stroke();
     }
   }
 
-  return {startX:sx,startY:sy,cellW:cw,cellH:ch};
+  return {sx,sy,cw,ch};
 }
 
 function handleTap(x,y,geo){
-  let c = Math.floor((x-geo.startX)/geo.cellW);
-  let r = Math.floor((y-geo.startY)/geo.cellH);
 
-  if(c<0||c>=4||r<0||r>=5) return;
+  const col = Math.floor((x-geo.sx)/geo.cw);
+  const row = Math.floor((y-geo.sy)/geo.ch);
 
-  if(mode==="select") gridState[r][c].selected=!gridState[r][c].selected;
-  if(mode==="normal") gridState[r][c].type="normal";
-  if(mode==="deficient") gridState[r][c].type="deficient";
+  if(col<0||col>=4||row<0||row>=5) return;
+
+  let cell = gridState[row][col];
+
+  if(mode==="select") {
+    cell.selected = !cell.selected;
+  }
+
+  if(mode==="normal") {
+    cell.type="normal";
+  }
+
+  if(mode==="deficient") {
+    cell.type="deficient";
+  }
+
+  console.log("Tap:", row, col, cell);
 }
