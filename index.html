@@ -1,13 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>G6PD Analyzer PRO</title>
-
 <style>
-body{background:black;color:white;text-align:center;font-family:Arial;}
+body { background:black; color:white; text-align:center; }
 
 .container{
   position:relative;
@@ -15,23 +11,21 @@ body{background:black;color:white;text-align:center;font-family:Arial;}
   margin:auto;
 }
 
-video{
+video, canvas{
   width:100%;
 }
 
-#overlay{
+canvas{
   position:absolute;
   top:0;
   left:0;
 }
-
-button{margin:5px;padding:10px;}
 </style>
 </head>
 
 <body>
 
-<h2>G6PD Analyzer PRO</h2>
+<h3>G6PD Stable Mode</h3>
 
 <div class="container">
   <video id="video" autoplay playsinline muted></video>
@@ -40,23 +34,18 @@ button{margin:5px;padding:10px;}
 
 <br>
 
-<button id="btnStart" onclick="startCamera()">Start</button>
-<button id="btnCapture" onclick="captureFrame()">Capture</button>
-<button id="btnStop" onclick="stopCamera()">Stop</button>
+<button onclick="startCamera()">Start</button>
+<button onclick="capture()">Capture</button>
+<button onclick="stopCamera()">Stop</button>
 
 <br>
 
-<button onclick="autoDetect()">Auto Detect</button>
-<button onclick="autoGridAlign()">Auto Grid</button>
-
-<br>
-
-<button onclick="resetSamples()">Reset</button>
+<button onclick="autoGrid()">Auto Grid</button>
+<button onclick="reset()">Reset</button>
 
 <pre id="result"></pre>
 
 <script src="app.js"></script>
-<script src="ai.js"></script>
 
 </body>
 </html>
