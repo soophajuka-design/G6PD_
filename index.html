@@ -2,8 +2,14 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body{background:black;color:white;text-align:center;font-family:Arial;}
+body{
+  background:black;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
 
 .container{
   position:relative;
@@ -19,49 +25,53 @@ body{background:black;color:white;text-align:center;font-family:Arial;}
 
 video, canvas{
   position:absolute;
-  top:0; left:0;
-  width:100%; height:100%;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
 }
 </style>
 </head>
 
 <body>
 
-<h3>Auto Workflow G6PD</h3>
+<h3>G6PD Auto Tool</h3>
 
 <div class="container">
   <div class="aspect-box">
+
+    <!-- LIVE VIDEO -->
     <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas"></canvas>
+
+    <!-- CAPTURE FRAME -->
+    <canvas id="frameCanvas"></canvas>
+
+    <!-- GRID OVERLAY -->
+    <canvas id="overlay"></canvas>
+
   </div>
 </div>
 
 <p id="log"></p>
 
-<h4>Main</h4>
 <button onclick="start()">Start</button>
-<button onclick="captureAuto()">Capture</button>
+<button onclick="capture()">Capture</button>
+<button onclick="drawTemplateGrid()">Grid</button>
 <button onclick="reset()">Reset</button>
-
-<h4>Debug</h4>
-<button onclick="drawTemplateGrid()">Template</button>
-<button onclick="autoAlign()">Align</button>
-<button onclick="detectCircles()">Detect</button>
-<button onclick="snapGrid()">Snap</button>
 
 <script>
 
 const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+
+const frameCanvas = document.getElementById("frameCanvas");
+const fctx = frameCanvas.getContext("2d");
+
+const overlay = document.getElementById("overlay");
+const octx = overlay.getContext("2d");
+
 const log = document.getElementById("log");
 
-let frame=null;
-let gray=null;
-let detected=[];
-let samples=[];
-
-let scaleX=1, scaleY=1;
+let captured = false;
 
 // ===== START =====
 async function start(){
@@ -74,238 +84,135 @@ async function start(){
 
   video.onloadedmetadata = ()=>{
     video.play();
-    resizeCanvas();
+    resizeAll();
     drawTemplateGrid();
-    log.innerText="live + template";
+    log.innerText="Live view ready";
   };
 }
 
-// ===== RESIZE =====
-function resizeCanvas(){
-  const rect = video.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
+// ===== RESIZE (CRITICAL FIX) =====
+function resizeAll(){
+
+  const w = video.videoWidth;
+  const h = video.videoHeight;
+
+  if(!w || !h) return;
+
+  frameCanvas.width = w;
+  frameCanvas.height = h;
+
+  overlay.width = w;
+  overlay.height = h;
 }
 
-// ===== CAPTURE AUTO =====
-function captureAuto(){
+// ===== CAPTURE ONLY WHEN BUTTON PRESSED =====
+function capture(){
 
   if(!video.videoWidth){
-    log.innerText="video not ready";
+    log.innerText="Video not ready";
     return;
   }
 
-  const w=video.videoWidth;
-  const h=video.videoHeight;
+  const w = video.videoWidth;
+  const h = video.videoHeight;
 
-  const temp=document.createElement("canvas");
-  temp.width=w; temp.height=h;
+  frameCanvas.width = w;
+  frameCanvas.height = h;
 
-  const tctx=temp.getContext("2d");
-  tctx.drawImage(video,0,0,w,h);
+  fctx.drawImage(video,0,0,w,h);
 
-  frame = tctx.getImageData(0,0,w,h);
-  gray = toGray(frame);
+  captured = true;
 
-  scaleX = w / canvas.width;
-  scaleY = h / canvas.height;
-
-  ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-
-  log.innerText="captured...";
-
-  setTimeout(()=>{
-
-    const corners = detectPaper();
-
-    if(!corners){
-      log.innerText="align fail";
-      return;
-    }
-
-    drawGridOnQuad(corners);
-
-    setTimeout(()=>{
-      detectCircles();
-
-      setTimeout(()=>{
-        snapGrid();
-        log.innerText="DONE ✔";
-      },150);
-
-    },150);
-
-  },150);
+  log.innerText="Captured ✔";
 }
 
-// ===== TEMPLATE GRID =====
+// ===== GRID OVERLAY (NO CAPTURE) =====
 function drawTemplateGrid(){
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  octx.clearRect(0,0,overlay.width,overlay.height);
 
-  const cols=4, rows=5;
+  const cols = 4;
+  const rows = 5;
 
-  const vw=canvas.width;
-  const vh=canvas.height;
+  const w = overlay.width;
+  const h = overlay.height;
 
-  const margin=0.15;
+  const margin = 0.15;
 
-  const usableW = vw*(1-margin*2);
-  const usableH = vh*(1-margin*2);
+  const usableW = w*(1-margin*2);
+  const usableH = h*(1-margin*2);
 
   const ratio = 7.1/12.8;
 
-  let gridW=usableW;
-  let gridH=gridW/ratio;
+  let gridW = usableW;
+  let gridH = gridW/ratio;
 
-  if(gridH>usableH){
-    gridH=usableH;
-    gridW=gridH*ratio;
+  if(gridH > usableH){
+    gridH = usableH;
+    gridW = gridH * ratio;
   }
 
-  const ox=(vw-gridW)/2;
-  const oy=(vh-gridH)/2;
+  const ox = (w-gridW)/2;
+  const oy = (h-gridH)/2;
 
-  const cw=gridW/cols;
-  const ch=gridH/rows;
+  const cw = gridW/cols;
+  const ch = gridH/rows;
 
-  ctx.strokeStyle="white";
-  ctx.strokeRect(ox,oy,gridW,gridH);
+  // ===== outer frame =====
+  octx.strokeStyle="white";
+  octx.lineWidth=2;
+  octx.strokeRect(ox,oy,gridW,gridH);
 
-  ctx.strokeStyle="rgba(255,255,255,0.5)";
+  // ===== grid =====
+  octx.strokeStyle="rgba(255,255,255,0.5)";
+  octx.lineWidth=1;
 
   for(let i=1;i<cols;i++){
-    ctx.beginPath();
-    ctx.moveTo(ox+i*cw,oy);
-    ctx.lineTo(ox+i*cw,oy+gridH);
-    ctx.stroke();
+    octx.beginPath();
+    octx.moveTo(ox+i*cw,oy);
+    octx.lineTo(ox+i*cw,oy+gridH);
+    octx.stroke();
   }
 
   for(let j=1;j<rows;j++){
-    ctx.beginPath();
-    ctx.moveTo(ox,oy+j*ch);
-    ctx.lineTo(ox+gridW,oy+j*ch);
-    ctx.stroke();
+    octx.beginPath();
+    octx.moveTo(ox,oy+j*ch);
+    octx.lineTo(ox+gridW,oy+j*ch);
+    octx.stroke();
   }
 
-  ctx.strokeStyle="lime";
-
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-      const x=ox+(c+0.5)*cw;
-      const y=oy+(r+0.5)*ch;
-      ctx.beginPath();
-      ctx.arc(x,y,Math.min(cw,ch)*0.25,0,Math.PI*2);
-      ctx.stroke();
-    }
-  }
-}
-
-// ===== DETECT PAPER =====
-function detectPaper(){
-
-  const w=frame.width;
-  const h=frame.height;
-
-  let pts=[];
-
-  for(let y=10;y<h-10;y+=5){
-    for(let x=10;x<w-10;x+=5){
-
-      const gx=gray[y*w+(x+1)]-gray[y*w+(x-1)];
-      const gy=gray[(y+1)*w+x]-gray[(y-1)*w+x];
-
-      if(Math.abs(gx)+Math.abs(gy)>80){
-        pts.push({x,y});
-      }
-    }
-  }
-
-  if(pts.length<50) return null;
-
-  let tl={x:9999,y:9999}, tr={x:0,y:9999};
-  let br={x:0,y:0}, bl={x:9999,y:0};
-
-  pts.forEach(p=>{
-    if(p.x+p.y < tl.x+tl.y) tl=p;
-    if(p.x-p.y > tr.x-tr.y) tr=p;
-    if(p.x+p.y > br.x+br.y) br=p;
-    if(p.x-p.y < bl.x-bl.y) bl=p;
-  });
-
-  return [tl,tr,br,bl];
-}
-
-// ===== DRAW GRID ON PAPER =====
-function drawGridOnQuad(corners){
-
-  const [tl,tr,br,bl]=corners;
-
-  function lerp(a,b,t){return a+(b-a)*t;}
-  function interp(p1,p2,t){
-    return {x:lerp(p1.x,p2.x,t),y:lerp(p1.y,p2.y,t)};
-  }
-
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  const temp=document.createElement("canvas");
-  temp.width=frame.width;
-  temp.height=frame.height;
-  temp.getContext("2d").putImageData(frame,0,0);
-
-  ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-
-  const cols=4, rows=5;
-
-  ctx.strokeStyle="lime";
+  // ===== circles =====
+  octx.strokeStyle="lime";
 
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
-      const tx=(c+0.5)/cols;
-      const ty=(r+0.5)/rows;
+      const x = ox + (c+0.5)*cw;
+      const y = oy + (r+0.5)*ch;
 
-      const top=interp(tl,tr,tx);
-      const bottom=interp(bl,br,tx);
-      const p=interp(top,bottom,ty);
-
-      ctx.beginPath();
-      ctx.arc(p.x/scaleX,p.y/scaleY,10,0,Math.PI*2);
-      ctx.stroke();
-
-      detected.push(p);
+      octx.beginPath();
+      octx.arc(x,y,Math.min(cw,ch)*0.25,0,Math.PI*2);
+      octx.stroke();
     }
   }
-}
 
-// ===== DETECT CIRCLES (simple refine) =====
-function detectCircles(){
-  log.innerText="detect refine";
-}
-
-// ===== SNAP =====
-function snapGrid(){
-  log.innerText="snap done";
+  log.innerText="Grid overlay";
 }
 
 // ===== RESET =====
 function reset(){
-  frame=null;
-  detected=[];
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawTemplateGrid();
-  log.innerText="reset";
-}
 
-// ===== UTIL =====
-function toGray(img){
-  const g=new Uint8ClampedArray(img.width*img.height);
-  for(let i=0,j=0;i<img.data.length;i+=4,j++){
-    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
-  }
-  return g;
+  captured = false;
+
+  fctx.clearRect(0,0,frameCanvas.width,frameCanvas.height);
+  octx.clearRect(0,0,overlay.width,overlay.height);
+
+  drawTemplateGrid();
+
+  log.innerText="Reset";
 }
 
 </script>
+
 </body>
 </html>
