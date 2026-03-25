@@ -88,32 +88,53 @@ function drawGrid(){
   const cols = 4;
   const rows = 5;
 
-  const w = canvas.width;
-  const h = canvas.height;
+  const vw = canvas.width;
+  const vh = canvas.height;
 
-  const cellW = w / cols;
-  const cellH = h / rows;
+  // 🔥 margin รอบนอก (ปรับได้)
+  const marginRatio = 0.15; // 15% ของจอ
+
+  const usableW = vw * (1 - marginRatio*2);
+  const usableH = vh * (1 - marginRatio*2);
+
+  // 🔥 lock aspect ratio 7.1:12.8
+  const targetRatio = 7.1 / 12.8;
+
+  let gridW = usableW;
+  let gridH = gridW / targetRatio;
+
+  if(gridH > usableH){
+    gridH = usableH;
+    gridW = gridH * targetRatio;
+  }
+
+  // 🔥 center grid
+  const offsetX = (vw - gridW)/2;
+  const offsetY = (vh - gridH)/2;
+
+  const cellW = gridW / cols;
+  const cellH = gridH / rows;
 
   // ===== outer frame =====
   ctx.strokeStyle = "white";
   ctx.lineWidth = 2;
-  ctx.strokeRect(0,0,w,h);
+  ctx.strokeRect(offsetX, offsetY, gridW, gridH);
 
   // ===== grid lines =====
+  ctx.strokeStyle = "rgba(255,255,255,0.5)";
   ctx.lineWidth = 1;
-  ctx.strokeStyle = "rgba(255,255,255,0.6)";
 
   for(let i=1;i<cols;i++){
     ctx.beginPath();
-    ctx.moveTo(i*cellW,0);
-    ctx.lineTo(i*cellW,h);
+    ctx.moveTo(offsetX + i*cellW, offsetY);
+    ctx.lineTo(offsetX + i*cellW, offsetY + gridH);
     ctx.stroke();
   }
 
   for(let j=1;j<rows;j++){
     ctx.beginPath();
-    ctx.moveTo(0,j*cellH);
-    ctx.lineTo(w,j*cellH);
+    ctx.moveTo(offsetX, offsetY + j*cellH);
+    ctx.lineTo(offsetX + gridW, offsetY + j*cellH);
     ctx.stroke();
   }
 
@@ -126,14 +147,18 @@ function drawGrid(){
   for(let rIdx=0;rIdx<rows;rIdx++){
     for(let cIdx=0;cIdx<cols;cIdx++){
 
-      const cx = (cIdx+0.5)*cellW;
-      const cy = (rIdx+0.5)*cellH;
+      const cx = offsetX + (cIdx+0.5)*cellW;
+      const cy = offsetY + (rIdx+0.5)*cellH;
 
       ctx.beginPath();
       ctx.arc(cx,cy,r,0,Math.PI*2);
       ctx.stroke();
     }
   }
+
+  // ===== DEBUG (optional: show margin) =====
+  ctx.strokeStyle = "rgba(255,0,0,0.3)";
+  ctx.strokeRect(0,0,vw,vh);
 }
 
 // ===== resize fix =====
