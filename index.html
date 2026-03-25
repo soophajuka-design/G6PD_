@@ -1,12 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>G6PD Analyzer</title>
-<link rel="manifest" href="manifest.json">
+
 <style>
-body { background:black; color:white; text-align:center; }
-video, canvas { width:100%; max-width:500px; }
+body { margin:0; background:black; color:white; text-align:center; }
+
+#container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  margin:auto;
+}
+
+video, canvas {
+  width:100%;
+  height:auto;
+  display:block;
+}
+
+canvas {
+  position:absolute;
+  top:0;
+  left:0;
+  z-index:2;
+}
 </style>
 </head>
 
@@ -20,19 +39,13 @@ video, canvas { width:100%; max-width:500px; }
 <button onclick="setMode('deficient')">Deficient</button>
 <button onclick="analyze()">Analyze</button>
 
-<br><br>
-
-<video id="video" autoplay playsinline></video>
-<canvas id="overlay"></canvas>
-
-<script src="libs/opencv.js"></script>
-<script src="libs/tf.min.js"></script>
+<div id="container">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+</div>
 
 <script src="camera.js"></script>
 <script src="grid.js"></script>
-<script src="detect.js"></script>
-<script src="warp.js"></script>
-<script src="ai.js"></script>
 <script src="analyzer.js"></script>
 <script src="app.js"></script>
 
