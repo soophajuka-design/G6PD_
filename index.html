@@ -2,233 +2,35 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<style>
-body{
-  background:black;
-  color:white;
-  text-align:center;
-  font-family:Arial;
-}
-
-.container{
-  position:relative;
-  width:320px;
-  margin:auto;
-}
-
-.aspect-box{
-  position:relative;
-  width:100%;
-  padding-top: calc(12.8 / 7.1 * 100%);
-}
-
-video, canvas{
-  position:absolute;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-}
-</style>
+<title>G6PD Analyzer</title>
+<link rel="manifest" href="manifest.json">
 </head>
 
-<body>
+<body style="background:black;color:white;text-align:center">
 
-<h3>G6PD Auto Tool</h3>
+<h2>G6PD Analyzer</h2>
 
-<div class="container">
-  <div class="aspect-box">
-
-    <!-- LIVE VIDEO -->
-    <video id="video" autoplay playsinline muted></video>
-
-    <!-- CAPTURE FRAME -->
-    <canvas id="frameCanvas"></canvas>
-
-    <!-- GRID OVERLAY -->
-    <canvas id="overlay"></canvas>
-
-  </div>
+<!-- TAB MODE -->
+<div>
+  <button onclick="setMode('select')">Select Points</button>
+  <button onclick="setMode('normal')">Set Normal</button>
+  <button onclick="setMode('deficient')">Set Deficient</button>
+  <button onclick="analyze()">Analyze</button>
 </div>
 
-<p id="log"></p>
+<video id="video" autoplay playsinline></video>
+<canvas id="overlay"></canvas>
 
-<button onclick="start()">Start</button>
-<button onclick="capture()">Capture</button>
-<button onclick="drawTemplateGrid()">Grid</button>
-<button onclick="reset()">Reset</button>
+<script src="libs/opencv.js"></script>
+<script src="libs/tf.min.js"></script>
 
-<script>
-
-const video = document.getElementById("video");
-
-const frameCanvas = document.getElementById("frameCanvas");
-const fctx = frameCanvas.getContext("2d");
-
-const overlay = document.getElementById("overlay");
-const octx = overlay.getContext("2d");
-
-const log = document.getElementById("log");
-
-let captured = false;
-
-// ===== START =====
-async function start(){
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video:{facingMode:"environment"}
-  });
-
-  video.srcObject = stream;
-
-  video.onloadedmetadata = ()=>{
-    video.play();
-    resizeAll();
-    drawTemplateGrid();
-    log.innerText="Live view ready";
-  };
-}
-
-// ===== RESIZE (CRITICAL FIX) =====
-function resizeAll(){
-
-  const rect = video.getBoundingClientRect();
-
-  const w = rect.width;
-  const h = rect.height;
-
-  // 🔥 ใช้ “ขนาดที่เห็นจริง”
-  frameCanvas.width = w;
-  frameCanvas.height = h;
-
-  overlay.width = w;
-  overlay.height = h;
-}
-
-// ===== CAPTURE ONLY WHEN BUTTON PRESSED =====
-function capture(){
-
-  const rect = video.getBoundingClientRect();
-
-  const displayW = rect.width;
-  const displayH = rect.height;
-
-  if(!video.videoWidth){
-    log.innerText="Video not ready";
-    return;
-  }
-
-  // 🔥 ตั้ง canvas = ขนาดที่เห็นจริง
-  frameCanvas.width = displayW;
-  frameCanvas.height = displayH;
-
-  // 🔥 วาด “เหมือน browser render”
-  fctx.drawImage(
-    video,
-    0, 0, video.videoWidth, video.videoHeight,
-    0, 0, displayW, displayH
-  );
-
-  // 🔥 freeze
-  video.style.display = "none";
-  frameCanvas.style.display = "block";
-
-  log.innerText="Captured ✔ (WYSIWYG)";
-}
-
-
-// ===== GRID OVERLAY (NO CAPTURE) =====
-function drawTemplateGrid(){
-
-  octx.clearRect(0,0,overlay.width,overlay.height);
-
-  const cols = 4;
-  const rows = 5;
-
-  const w = overlay.width;
-  const h = overlay.height;
-
-  const margin = 0.15;
-
-  const usableW = w*(1-margin*2);
-  const usableH = h*(1-margin*2);
-
-  const ratio = 7.1/12.8;
-
-  let gridW = usableW;
-  let gridH = gridW/ratio;
-
-  if(gridH > usableH){
-    gridH = usableH;
-    gridW = gridH * ratio;
-  }
-
-  const ox = (w-gridW)/2;
-  const oy = (h-gridH)/2;
-
-  const cw = gridW/cols;
-  const ch = gridH/rows;
-
-  // ===== outer frame =====
-  octx.strokeStyle="white";
-  octx.lineWidth=2;
-  octx.strokeRect(ox,oy,gridW,gridH);
-
-  // ===== grid =====
-  octx.strokeStyle="rgba(255,255,255,0.5)";
-  octx.lineWidth=1;
-
-  for(let i=1;i<cols;i++){
-    octx.beginPath();
-    octx.moveTo(ox+i*cw,oy);
-    octx.lineTo(ox+i*cw,oy+gridH);
-    octx.stroke();
-  }
-
-  for(let j=1;j<rows;j++){
-    octx.beginPath();
-    octx.moveTo(ox,oy+j*ch);
-    octx.lineTo(ox+gridW,oy+j*ch);
-    octx.stroke();
-  }
-
-  // ===== circles =====
-  octx.strokeStyle="lime";
-
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-
-      const x = ox + (c+0.5)*cw;
-      const y = oy + (r+0.5)*ch;
-
-      octx.beginPath();
-      octx.arc(x,y,Math.min(cw,ch)*0.25,0,Math.PI*2);
-      octx.stroke();
-    }
-  }
-
-  log.innerText="Grid overlay";
-}
-
-// ===== RESET =====
-function reset(){
-
-  captured = false;
-
-  // 🔥 กลับมา live
-  video.style.display = "block";
-  frameCanvas.style.display = "none";
-
-  fctx.clearRect(0,0,frameCanvas.width,frameCanvas.height);
-  octx.clearRect(0,0,overlay.width,overlay.height);
-
-  drawTemplateGrid();
-
-  log.innerText="Reset → Live";
-}
-
-</script>
+<script src="camera.js"></script>
+<script src="grid.js"></script>
+<script src="detect.js"></script>
+<script src="warp.js"></script>
+<script src="ai.js"></script>
+<script src="analyzer.js"></script>
+<script src="app.js"></script>
 
 </body>
 </html>
