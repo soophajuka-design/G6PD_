@@ -28,14 +28,25 @@ window.onload = () => {
 };
 
 function startLoop(){
+
   function loop(){
 
-    if(video.videoWidth>0){
+    if(video.videoWidth > 0){
 
       overlay.width = video.videoWidth;
       overlay.height = video.videoHeight;
 
+      // 1. วาด grid ก่อน
       geo = drawGrid(overlay, ctx);
+
+      // 2. capture frame
+      let frame = captureFrame();
+
+      // 3. detect paper
+      let corners = detectPaperCorners(frame);
+
+      // 4. วาดจุดมุม (debug)
+      drawCorners(ctx, corners);
     }
 
     requestAnimationFrame(loop);
@@ -62,4 +73,15 @@ function resetApp() {
   }
 
   console.log("Reset complete");
+}
+function drawCorners(ctx, corners){
+  if(!corners) return;
+
+  ctx.fillStyle = "red";
+
+  corners.forEach(p=>{
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
+    ctx.fill();
+  });
 }
