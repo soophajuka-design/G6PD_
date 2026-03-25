@@ -152,14 +152,14 @@ function autoDetect(){
 
   if(!cachedFrame) return;
 
+  samples=[];
+
   const w=cachedFrame.width;
   const h=cachedFrame.height;
   const g=cachedGray;
 
-  samples=[];
-
-  for(let y=40;y<h-40;y+=20){
-    for(let x=40;x<w-40;x+=20){
+  for(let y=40;y<h-40;y+=30){
+    for(let x=40;x<w-40;x+=30){
 
       let s=0;
 
@@ -176,7 +176,19 @@ function autoDetect(){
       }
 
       if(s<4000){
-        samples.push({x,y,r:25});
+
+        // map → display
+        const dx = x / displayScaleX;
+        const dy = y / displayScaleY;
+
+        const rgb = readRGB(cachedFrame,x,y,25);
+
+        samples.push({
+          x:dx,
+          y:dy,
+          r:25,
+          rgb
+        });
       }
     }
   }
@@ -184,10 +196,11 @@ function autoDetect(){
   drawAll();
 }
 
-// ===== GRID ALIGN =====
 function autoGridAlign(){
 
   if(!cachedFrame) return;
+
+  samples=[];
 
   const w=cachedFrame.width;
   const h=cachedFrame.height;
@@ -197,17 +210,23 @@ function autoGridAlign(){
   const dx=w/(cols+1);
   const dy=h/(rows+1);
 
-  samples=[];
-
   for(let r=1;r<=rows;r++){
     for(let c=1;c<=cols;c++){
 
       const x=c*dx;
       const y=r*dy;
 
-      const rgb=readRGB(cachedFrame,x,y,25);
+      const dx2 = x / displayScaleX;
+      const dy2 = y / displayScaleY;
 
-      samples.push({x,y,r:25,rgb});
+      const rgb = readRGB(cachedFrame,x,y,25);
+
+      samples.push({
+        x:dx2,
+        y:dy2,
+        r:25,
+        rgb
+      });
     }
   }
 
