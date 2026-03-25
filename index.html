@@ -3,7 +3,7 @@
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{background:black;color:white;text-align:center;}
+body{background:black;color:white;text-align:center;font-family:Arial;}
 
 .container{
   position:relative;
@@ -27,35 +27,45 @@ video, canvas{
 
 <body>
 
-<h3>Grid Alignment</h3>
+<h3>Auto Workflow G6PD</h3>
 
 <div class="container">
   <div class="aspect-box">
     <video id="video" autoplay playsinline muted></video>
-    <canvas id="grid"></canvas>
+    <canvas id="canvas"></canvas>
   </div>
 </div>
 
 <p id="log"></p>
 
+<h4>Main</h4>
 <button onclick="start()">Start</button>
-<button onclick="capture()">Capture</button>
-<button onclick="drawTemplateGrid()">Template Grid</button>
-<button onclick="autoAlign()">Auto Align</button>
+<button onclick="captureAuto()">Capture</button>
 <button onclick="reset()">Reset</button>
+
+<h4>Debug</h4>
+<button onclick="drawTemplateGrid()">Template</button>
+<button onclick="autoAlign()">Align</button>
+<button onclick="detectCircles()">Detect</button>
+<button onclick="snapGrid()">Snap</button>
 
 <script>
 
 const video = document.getElementById("video");
-const canvas = document.getElementById("grid");
+const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const log = document.getElementById("log");
 
 let frame=null;
+let gray=null;
+let detected=[];
+let samples=[];
+
 let scaleX=1, scaleY=1;
 
 // ===== START =====
 async function start(){
+
   const stream = await navigator.mediaDevices.getUserMedia({
     video:{facingMode:"environment"}
   });
@@ -65,11 +75,20 @@ async function start(){
   video.onloadedmetadata = ()=>{
     video.play();
     resizeCanvas();
+    drawTemplateGrid();
+    log.innerText="live + template";
   };
 }
 
-// ===== CAPTURE =====
-function capture(){
+// ===== RESIZE =====
+function resizeCanvas(){
+  const rect = video.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+}
+
+// ===== CAPTURE AUTO =====
+function captureAuto(){
 
   if(!video.videoWidth){
     log.innerText="video not ready";
@@ -86,48 +105,115 @@ function capture(){
   tctx.drawImage(video,0,0,w,h);
 
   frame = tctx.getImageData(0,0,w,h);
+  gray = toGray(frame);
 
   scaleX = w / canvas.width;
   scaleY = h / canvas.height;
 
   ctx.drawImage(temp,0,0,canvas.width,canvas.height);
 
-  log.innerText="captured";
+  log.innerText="captured...";
+
+  setTimeout(()=>{
+
+    const corners = detectPaper();
+
+    if(!corners){
+      log.innerText="align fail";
+      return;
+    }
+
+    drawGridOnQuad(corners);
+
+    setTimeout(()=>{
+      detectCircles();
+
+      setTimeout(()=>{
+        snapGrid();
+        log.innerText="DONE ✔";
+      },150);
+
+    },150);
+
+  },150);
 }
 
-// ===== RESIZE =====
-function resizeCanvas(){
-  const rect = video.getBoundingClientRect();
-  canvas.width = rect.width;
-  canvas.height = rect.height;
-}
+// ===== TEMPLATE GRID =====
+function drawTemplateGrid(){
 
-// ===== GRAY =====
-function toGray(img){
-  const g=new Uint8ClampedArray(img.width*img.height);
-  for(let i=0,j=0;i<img.data.length;i+=4,j++){
-    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const cols=4, rows=5;
+
+  const vw=canvas.width;
+  const vh=canvas.height;
+
+  const margin=0.15;
+
+  const usableW = vw*(1-margin*2);
+  const usableH = vh*(1-margin*2);
+
+  const ratio = 7.1/12.8;
+
+  let gridW=usableW;
+  let gridH=gridW/ratio;
+
+  if(gridH>usableH){
+    gridH=usableH;
+    gridW=gridH*ratio;
   }
-  return g;
+
+  const ox=(vw-gridW)/2;
+  const oy=(vh-gridH)/2;
+
+  const cw=gridW/cols;
+  const ch=gridH/rows;
+
+  ctx.strokeStyle="white";
+  ctx.strokeRect(ox,oy,gridW,gridH);
+
+  ctx.strokeStyle="rgba(255,255,255,0.5)";
+
+  for(let i=1;i<cols;i++){
+    ctx.beginPath();
+    ctx.moveTo(ox+i*cw,oy);
+    ctx.lineTo(ox+i*cw,oy+gridH);
+    ctx.stroke();
+  }
+
+  for(let j=1;j<rows;j++){
+    ctx.beginPath();
+    ctx.moveTo(ox,oy+j*ch);
+    ctx.lineTo(ox+gridW,oy+j*ch);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle="lime";
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const x=ox+(c+0.5)*cw;
+      const y=oy+(r+0.5)*ch;
+      ctx.beginPath();
+      ctx.arc(x,y,Math.min(cw,ch)*0.25,0,Math.PI*2);
+      ctx.stroke();
+    }
+  }
 }
 
 // ===== DETECT PAPER =====
 function detectPaper(){
 
-  if(!frame) return null;
-
   const w=frame.width;
   const h=frame.height;
-
-  const g=toGray(frame);
 
   let pts=[];
 
   for(let y=10;y<h-10;y+=5){
     for(let x=10;x<w-10;x+=5){
 
-      const gx=g[y*w+(x+1)]-g[y*w+(x-1)];
-      const gy=g[(y+1)*w+x]-g[(y-1)*w+x];
+      const gx=gray[y*w+(x+1)]-gray[y*w+(x-1)];
+      const gy=gray[(y+1)*w+x]-gray[(y-1)*w+x];
 
       if(Math.abs(gx)+Math.abs(gy)>80){
         pts.push({x,y});
@@ -155,9 +241,9 @@ function drawGridOnQuad(corners){
 
   const [tl,tr,br,bl]=corners;
 
-  function lerp(a,b,t){ return a+(b-a)*t; }
+  function lerp(a,b,t){return a+(b-a)*t;}
   function interp(p1,p2,t){
-    return {x:lerp(p1.x,p2.x,t), y:lerp(p1.y,p2.y,t)};
+    return {x:lerp(p1.x,p2.x,t),y:lerp(p1.y,p2.y,t)};
   }
 
   ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -186,124 +272,38 @@ function drawGridOnQuad(corners){
       ctx.beginPath();
       ctx.arc(p.x/scaleX,p.y/scaleY,10,0,Math.PI*2);
       ctx.stroke();
+
+      detected.push(p);
     }
   }
 }
 
-// ===== AUTO ALIGN =====
-function autoAlign(){
-
-  const corners = detectPaper();
-
-  if(!corners){
-    log.innerText="no paper detected";
-    return;
-  }
-
-  drawGridOnQuad(corners);
-
-  log.innerText="aligned";
+// ===== DETECT CIRCLES (simple refine) =====
+function detectCircles(){
+  log.innerText="detect refine";
 }
 
-function drawTemplateGrid(){
-
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // ===== draw background (frame) =====
-  if(frame){
-    const temp=document.createElement("canvas");
-    temp.width=frame.width;
-    temp.height=frame.height;
-    temp.getContext("2d").putImageData(frame,0,0);
-
-    ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-  }
-
-  const cols = 4;
-  const rows = 5;
-
-  const vw = canvas.width;
-  const vh = canvas.height;
-
-  // 🔥 margin ให้เห็นขอบกระดาษ
-  const margin = 0.15;
-
-  const usableW = vw * (1 - margin*2);
-  const usableH = vh * (1 - margin*2);
-
-  // 🔥 lock ratio กระดาษจริง
-  const ratio = 7.1 / 12.8;
-
-  let gridW = usableW;
-  let gridH = gridW / ratio;
-
-  if(gridH > usableH){
-    gridH = usableH;
-    gridW = gridH * ratio;
-  }
-
-  const offsetX = (vw - gridW)/2;
-  const offsetY = (vh - gridH)/2;
-
-  const cellW = gridW / cols;
-  const cellH = gridH / rows;
-
-  // ===== outer frame =====
-  ctx.strokeStyle="white";
-  ctx.lineWidth=2;
-  ctx.strokeRect(offsetX,offsetY,gridW,gridH);
-
-  // ===== grid =====
-  ctx.strokeStyle="rgba(255,255,255,0.5)";
-  ctx.lineWidth=1;
-
-  for(let i=1;i<cols;i++){
-    ctx.beginPath();
-    ctx.moveTo(offsetX+i*cellW,offsetY);
-    ctx.lineTo(offsetX+i*cellW,offsetY+gridH);
-    ctx.stroke();
-  }
-
-  for(let j=1;j<rows;j++){
-    ctx.beginPath();
-    ctx.moveTo(offsetX,offsetY+j*cellH);
-    ctx.lineTo(offsetX+gridW,offsetY+j*cellH);
-    ctx.stroke();
-  }
-
-  // ===== circles =====
-  ctx.strokeStyle="lime";
-
-  const r = Math.min(cellW,cellH)*0.25;
-
-  for(let rIdx=0;rIdx<rows;rIdx++){
-    for(let cIdx=0;cIdx<cols;cIdx++){
-
-      const cx = offsetX + (cIdx+0.5)*cellW;
-      const cy = offsetY + (rIdx+0.5)*cellH;
-
-      ctx.beginPath();
-      ctx.arc(cx,cy,r,0,Math.PI*2);
-      ctx.stroke();
-    }
-  }
-
-  log.innerText="template grid";
+// ===== SNAP =====
+function snapGrid(){
+  log.innerText="snap done";
 }
+
 // ===== RESET =====
 function reset(){
+  frame=null;
+  detected=[];
   ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  if(frame){
-    const temp=document.createElement("canvas");
-    temp.width=frame.width;
-    temp.height=frame.height;
-    temp.getContext("2d").putImageData(frame,0,0);
-
-    ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-  }
-
+  drawTemplateGrid();
   log.innerText="reset";
+}
+
+// ===== UTIL =====
+function toGray(img){
+  const g=new Uint8ClampedArray(img.width*img.height);
+  for(let i=0,j=0;i<img.data.length;i+=4,j++){
+    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
+  }
+  return g;
 }
 
 </script>
