@@ -3,12 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>G6PD Analyzer AI</title>
+<title>G6PD Analyzer PRO</title>
 
 <style>
 body { background:black; color:white; text-align:center; font-family:Arial; }
 
-/* container */
 .container {
   position:relative;
   width:320px;
@@ -17,14 +16,12 @@ body { background:black; color:white; text-align:center; font-family:Arial; }
   touch-action:none;
 }
 
-/* 🔥 ห้าม transform video */
 video {
   width:100%;
   position:relative;
   z-index:1;
 }
 
-/* overlay */
 #overlay {
   position:absolute;
   top:0;
@@ -33,7 +30,6 @@ video {
   z-index:2;
 }
 
-/* zoom target */
 #stage {
   transform-origin:center center;
 }
@@ -44,7 +40,7 @@ button { margin:5px; padding:10px; }
 
 <body>
 
-<h3>G6PD Analyzer AI</h3>
+<h3>G6PD Analyzer PRO</h3>
 
 <div class="container">
   <div id="stage">
@@ -55,18 +51,18 @@ button { margin:5px; padding:10px; }
 
 <br>
 
-<button onclick="startCamera()">Start</button>
-<button onclick="captureFrame()">Capture</button>
-<button onclick="stopCamera()">Stop</button>
+<button id="btnStart" onclick="startCamera()">Start</button>
+<button id="btnCapture" onclick="captureFrame()">Capture</button>
+<button id="btnStop" onclick="stopCamera()">Stop</button>
 
 <br>
 
-<button onclick="autoDetect()">Auto Detect</button>
-<button onclick="autoAssignControl()">Auto Control</button>
+<button id="btnDetect" onclick="autoDetect()">Auto Detect</button>
+<button id="btnControl" onclick="autoAssignControl()">Auto Control</button>
 
 <br>
 
-<button onclick="resetSamples()">Reset</button>
+<button id="btnReset" onclick="resetSamples()">Reset</button>
 
 <pre id="result"></pre>
 
