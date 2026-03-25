@@ -1,22 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>G6PD Analyzer</title>
 
 <style>
-body { margin:0; background:black; color:white; text-align:center; }
+body {
+  margin:0;
+  background:#0b0f14;
+  color:white;
+  font-family:system-ui;
+  text-align:center;
+}
 
+h3 {
+  margin:10px;
+}
+
+/* === CAMERA AREA === */
 #container {
-  position: relative;
-  width: 100%;
-  max-width: 500px;
+  position:relative;
+  width:100%;
+  max-width:500px;
   margin:auto;
+  border-radius:12px;
+  overflow:hidden;
+  background:black;
 }
 
 video, canvas {
   width:100%;
-  height:auto;
   display:block;
 }
 
@@ -26,6 +39,41 @@ canvas {
   left:0;
   z-index:2;
 }
+
+/* === CONTROL PANEL === */
+#controls {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#111827;
+  padding:10px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+  box-shadow:0 -2px 10px rgba(0,0,0,0.6);
+}
+
+/* === BUTTON STYLE === */
+button {
+  padding:10px 14px;
+  border:none;
+  border-radius:8px;
+  font-size:14px;
+  color:white;
+}
+
+/* สี */
+.start { background:#2563eb; }
+.select { background:#10b981; }
+.normal { background:#22c55e; }
+.deficient { background:#ef4444; }
+.analyze { background:#f59e0b; }
+.reset { background:#6b7280; }
+
+button:active {
+  transform:scale(0.95);
+}
 </style>
 </head>
 
@@ -33,15 +81,19 @@ canvas {
 
 <h3>G6PD Analyzer</h3>
 
-<button id="startBtn">Start Camera</button>
-<button onclick="setMode('select')">Select</button>
-<button onclick="setMode('normal')">Normal</button>
-<button onclick="setMode('deficient')">Deficient</button>
-<button onclick="analyze()">Analyze</button>
-
 <div id="container">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
+</div>
+
+<!-- CONTROL BAR -->
+<div id="controls">
+  <button class="start" id="startBtn">Start</button>
+  <button class="select" onclick="setMode('select')">Select</button>
+  <button class="normal" onclick="setMode('normal')">Normal</button>
+  <button class="deficient" onclick="setMode('deficient')">Deficient</button>
+  <button class="analyze" onclick="analyze()">Analyze</button>
+  <button class="reset" onclick="resetApp()">Reset</button>
 </div>
 
 <script src="camera.js"></script>
