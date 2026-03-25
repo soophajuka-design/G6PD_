@@ -12,13 +12,14 @@ let gridState = Array.from({length:5}, () =>
   }))
 );
 
+
 function drawGrid(canvas, ctx) {
 
   const w = canvas.width;
   const h = canvas.height;
 
   ctx.clearRect(0,0,w,h);
-
+  ctx.lineWidth = 2;
   // margin 10%
   const margin = 0.1;
 
@@ -52,11 +53,12 @@ function drawGrid(canvas, ctx) {
       let cell = gridState[r][c];
 
       // สีตามสถานะ
-      if(cell.type==="normal") ctx.strokeStyle="lime";
-      else if(cell.type==="deficient") ctx.strokeStyle="red";
-      else if(cell.selected) ctx.strokeStyle="yellow";
+      if(cell.type==="normal") ctx.strokeStyle="#22c55e";
+      else if(cell.type==="deficient") ctx.strokeStyle="#ef4444";
+      else if(cell.selected) ctx.strokeStyle="#facc15";
       else ctx.strokeStyle="#00FFAA";
 
+      
       ctx.strokeRect(x,y,cw,ch);
 
       // วงกลม
