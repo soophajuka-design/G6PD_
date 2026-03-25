@@ -121,10 +121,17 @@ function capture(){
 
   fctx.drawImage(video,0,0,w,h);
 
+  // 🔥 สำคัญ: ซ่อน video
+  video.style.display = "none";
+
+  // 🔥 แสดง frame
+  frameCanvas.style.display = "block";
+
   captured = true;
 
-  log.innerText="Captured ✔";
+  log.innerText="Captured ✔ (freeze)";
 }
+
 
 // ===== GRID OVERLAY (NO CAPTURE) =====
 function drawTemplateGrid(){
@@ -204,12 +211,16 @@ function reset(){
 
   captured = false;
 
+  // 🔥 กลับมา live
+  video.style.display = "block";
+  frameCanvas.style.display = "none";
+
   fctx.clearRect(0,0,frameCanvas.width,frameCanvas.height);
   octx.clearRect(0,0,overlay.width,overlay.height);
 
   drawTemplateGrid();
 
-  log.innerText="Reset";
+  log.innerText="Reset → Live";
 }
 
 </script>
