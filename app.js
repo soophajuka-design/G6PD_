@@ -1,5 +1,6 @@
 let overlay, ctx;
 let geo;
+let isCameraOn = false;
 
 window.onload = () => {
 
@@ -10,10 +11,13 @@ window.onload = () => {
 
   document.getElementById('startBtn').onclick = async () => {
     await startCamera();
+    isCameraOn = true;
     startLoop();
   };
 
   overlay.addEventListener('click', (e)=>{
+    if(!isCameraOn) return;
+
     const rect = overlay.getBoundingClientRect();
 
     const x = (e.clientX - rect.left) * (overlay.width / rect.width);
@@ -39,3 +43,5 @@ function startLoop(){
 
   loop();
 }
+
+
