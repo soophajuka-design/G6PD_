@@ -2,8 +2,14 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-body { background:black; color:white; text-align:center; }
+body {
+  background:black;
+  color:white;
+  text-align:center;
+  font-family:Arial;
+}
 
 .wrap{
   position:relative;
@@ -26,36 +32,37 @@ canvas{
 
 <body>
 
-<h3>DEBUG CAMERA FIX</h3>
+<h3>G6PD Stable Build</h3>
 
 <div class="wrap">
   <video id="video" autoplay playsinline muted></video>
-  <canvas id="view"></canvas>
+  <canvas id="canvas"></canvas>
 </div>
 
 <br>
 
 <button onclick="start()">Start</button>
 <button onclick="capture()">Capture</button>
-<button onclick="testDraw()">Test Draw</button>
-<button onclick="clearAll()">Reset</button>
+<button onclick="autoGrid()">Auto Grid</button>
+<button onclick="reset()">Reset</button>
 
 <p id="log"></p>
 
 <script>
 
 const video = document.getElementById("video");
-const canvas = document.getElementById("view");
+const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const log = document.getElementById("log");
 
-let stream=null;
-let frame=null;
+let stream = null;
+let frame = null;
+let samples = [];
 
-let scaleX=1;
-let scaleY=1;
+let scaleX = 1;
+let scaleY = 1;
 
-// ===== START =====
+// ===== START CAMERA =====
 async function start(){
 
   try{
@@ -66,6 +73,7 @@ async function start(){
     video.srcObject = stream;
 
     video.onloadedmetadata = () => {
+
       video.play();
 
       const rect = video.getBoundingClientRect();
@@ -73,11 +81,11 @@ async function start(){
       canvas.width = rect.width;
       canvas.height = rect.height;
 
-      log.innerText="camera ready";
+      log.innerText = "camera ready";
     };
 
   }catch(e){
-    log.innerText="camera error: "+e;
+    log.innerText = "camera error: " + e;
   }
 }
 
@@ -85,7 +93,7 @@ async function start(){
 function capture(){
 
   if(!video.videoWidth){
-    log.innerText="video not ready";
+    log.innerText = "video not ready";
     return;
   }
 
@@ -97,27 +105,24 @@ function capture(){
   temp.height = h;
 
   const tctx = temp.getContext("2d");
-
-  // 🔥 สำคัญ: drawImage ต้องใช้ w,h
   tctx.drawImage(video,0,0,w,h);
 
   frame = tctx.getImageData(0,0,w,h);
 
-  // scale mapping
   scaleX = w / canvas.width;
   scaleY = h / canvas.height;
 
-  // 🔥 แสดงภาพนิ่งบน canvas
+  // draw frozen image
   ctx.drawImage(temp,0,0,canvas.width,canvas.height);
 
-  log.innerText="captured OK";
+  log.innerText = "captured OK";
 }
 
 // ===== TAP =====
 canvas.addEventListener("click",(e)=>{
 
   if(!frame){
-    log.innerText="tap but no frame";
+    log.innerText = "tap but no frame";
     return;
   }
 
@@ -126,33 +131,88 @@ canvas.addEventListener("click",(e)=>{
   const dx = e.clientX - rect.left;
   const dy = e.clientY - rect.top;
 
-  const x = dx * scaleX;
-  const y = dy * scaleY;
+  samples.push({x:dx, y:dy});
 
-  // draw test circle
-  ctx.beginPath();
-  ctx.arc(dx,dy,15,0,Math.PI*2);
-  ctx.strokeStyle="red";
-  ctx.stroke();
+  drawAll();
 
-  log.innerText = `tap OK (${Math.round(x)}, ${Math.round(y)})`;
+  log.innerText = `tap (${Math.round(dx)}, ${Math.round(dy)})`;
 });
 
-// ===== TEST DRAW =====
-function testDraw(){
+// ===== DRAW =====
+function drawAll(){
 
-  ctx.beginPath();
-  ctx.arc(100,100,20,0,Math.PI*2);
-  ctx.strokeStyle="yellow";
-  ctx.stroke();
+  if(frame){
 
-  log.innerText="draw OK";
+    const temp = document.createElement("canvas");
+    temp.width = frame.width;
+    temp.height = frame.height;
+
+    const tctx = temp.getContext("2d");
+    tctx.putImageData(frame,0,0);
+
+    ctx.drawImage(temp,0,0,canvas.width,canvas.height);
+  }
+
+  samples.forEach((s,i)=>{
+
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,15,0,Math.PI*2);
+    ctx.strokeStyle="white";
+    ctx.stroke();
+
+    ctx.fillStyle="yellow";
+    ctx.fillText(i,s.x+5,s.y);
+  });
+}
+
+// ===== AUTO GRID =====
+function autoGrid(){
+
+  if(!frame){
+    log.innerText = "no frame";
+    return;
+  }
+
+  samples = [];
+
+  const rows = 5;
+  const cols = 4;
+
+  for(let r=1;r<=rows;r++){
+    for(let c=1;c<=cols;c++){
+
+      const x = canvas.width * (c/(cols+1));
+      const y = canvas.height * (r/(rows+1));
+
+      samples.push({x,y});
+    }
+  }
+
+  drawAll();
+
+  log.innerText = "grid OK";
 }
 
 // ===== RESET =====
-function clearAll(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  log.innerText="reset";
+function reset(){
+
+  samples = [];
+
+  if(frame){
+
+    const temp = document.createElement("canvas");
+    temp.width = frame.width;
+    temp.height = frame.height;
+
+    const tctx = temp.getContext("2d");
+    tctx.putImageData(frame,0,0);
+
+    ctx.drawImage(temp,0,0,canvas.width,canvas.height);
+  }else{
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+  }
+
+  log.innerText = "reset OK";
 }
 
 </script>
