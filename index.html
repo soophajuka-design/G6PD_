@@ -49,7 +49,23 @@ canvas{
 </div>
 
 <br>
-<button onclick="startCamera()">Start</button>
+//===== <button onclick="startCamera()">Start</button>
+
+<h4>Capture</h4>
+<button onclick="start()">Start</button>
+<button onclick="capture()">Capture</button>
+
+<h4>Align</h4>
+<button onclick="autoAlign()">Auto Align</button>
+
+<h4>Analysis</h4>
+<button onclick="autoGrid()">Grid</button>
+<button onclick="detectCircles()">Detect</button>
+<button onclick="snapGrid()">Snap</button>
+
+<h4>Reset</h4>
+<button onclick="reset()">Reset</button>
+
 
 <script>
 
@@ -159,6 +175,140 @@ function drawGrid(){
   // ===== DEBUG (optional: show margin) =====
   ctx.strokeStyle = "rgba(255,0,0,0.3)";
   ctx.strokeRect(0,0,vw,vh);
+}
+function detectPaper(){
+
+  if(!frame) return null;
+
+  const w = frame.width;
+  const h = frame.height;
+
+  const g = toGray(frame);
+
+  let bestPoints = [];
+  let maxCount = 0;
+
+  // scan หา edge หนา ๆ (ขอบกระดาษ)
+  for(let y=5;y<h-5;y+=4){
+    for(let x=5;x<w-5;x+=4){
+
+      const gx = g[y*w+(x+1)] - g[y*w+(x-1)];
+      const gy = g[(y+1)*w+x] - g[(y-1)*w+x];
+
+      const mag = Math.abs(gx)+Math.abs(gy);
+
+      if(mag > 80){
+
+        bestPoints.push({x,y});
+
+        if(bestPoints.length > 2000){
+          break;
+        }
+      }
+    }
+  }
+
+  if(bestPoints.length < 50) return null;
+
+  // ===== หา 4 มุม =====
+  let tl={x:9999,y:9999};
+  let tr={x:0,y:9999};
+  let br={x:0,y:0};
+  let bl={x:9999,y:0};
+
+  bestPoints.forEach(p=>{
+
+    if(p.x+p.y < tl.x+tl.y) tl=p;
+    if(p.x-p.y > tr.x-tr.y) tr=p;
+    if(p.x+p.y > br.x+br.y) br=p;
+    if(p.x-p.y < bl.x-bl.y) bl=p;
+  });
+
+  return [tl,tr,br,bl];
+}
+function drawGridOnQuad(corners){
+
+  const cols=4;
+  const rows=5;
+
+  const [tl,tr,br,bl] = corners;
+
+  function lerp(a,b,t){
+    return a + (b-a)*t;
+  }
+
+  function interp(p1,p2,t){
+    return {
+      x: lerp(p1.x,p2.x,t),
+      y: lerp(p1.y,p2.y,t)
+    };
+  }
+
+  // redraw image
+  drawAll();
+
+  // draw grid lines
+  ctx.strokeStyle="cyan";
+  ctx.lineWidth=1;
+
+  for(let i=1;i<cols;i++){
+
+    const t=i/cols;
+
+    const top = interp(tl,tr,t);
+    const bottom = interp(bl,br,t);
+
+    ctx.beginPath();
+    ctx.moveTo(top.x/scaleX, top.y/scaleY);
+    ctx.lineTo(bottom.x/scaleX, bottom.y/scaleY);
+    ctx.stroke();
+  }
+
+  for(let j=1;j<rows;j++){
+
+    const t=j/rows;
+
+    const left = interp(tl,bl,t);
+    const right = interp(tr,br,t);
+
+    ctx.beginPath();
+    ctx.moveTo(left.x/scaleX, left.y/scaleY);
+    ctx.lineTo(right.x/scaleX, right.y/scaleY);
+    ctx.stroke();
+  }
+
+  // ===== circles =====
+  ctx.strokeStyle="lime";
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+
+      const tx = (c+0.5)/cols;
+      const ty = (r+0.5)/rows;
+
+      const top = interp(tl,tr,tx);
+      const bottom = interp(bl,br,tx);
+
+      const p = interp(top,bottom,ty);
+
+      ctx.beginPath();
+      ctx.arc(p.x/scaleX,p.y/scaleY,10,0,Math.PI*2);
+      ctx.stroke();
+    }
+  }
+}
+function autoAlign(){
+
+  const corners = detectPaper();
+
+  if(!corners){
+    log.innerText="no paper detected";
+    return;
+  }
+
+  drawGridOnQuad(corners);
+
+  log.innerText="auto aligned";
 }
 
 // ===== resize fix =====
