@@ -1,5 +1,8 @@
 const video = document.getElementById("video");
+const freezeCanvas = document.getElementById("freeze");
 const overlay = document.getElementById("overlay");
+
+const fctx = freezeCanvas.getContext("2d");
 const ctx = overlay.getContext("2d");
 
 let stream=null;
@@ -20,8 +23,51 @@ async function startCamera(){
   video.srcObject = stream;
   await video.play();
 
-  overlay.width = video.clientWidth;
-  overlay.height = video.clientHeight;
+  syncCanvas();
+}
+
+// ===== SYNC =====
+function syncCanvas(){
+
+  const rect = video.getBoundingClientRect();
+
+  freezeCanvas.width = rect.width;
+  freezeCanvas.height = rect.height;
+
+  overlay.width = rect.width;
+  overlay.height = rect.height;
+}
+
+// ===== CAPTURE (FIX สำคัญสุด) =====
+function capture(){
+
+  const w=video.videoWidth;
+  const h=video.videoHeight;
+
+  if(!w || !h){
+    alert("video not ready");
+    return;
+  }
+
+  const temp=document.createElement("canvas");
+  temp.width=w;
+  temp.height=h;
+
+  const tctx=temp.getContext("2d");
+  tctx.drawImage(video,0,0,w,h);
+
+  frame = tctx.getImageData(0,0,w,h);
+
+  // scale mapping
+  scaleX = w / freezeCanvas.width;
+  scaleY = h / freezeCanvas.height;
+
+  // 🔥 draw frozen image
+  fctx.clearRect(0,0,freezeCanvas.width,freezeCanvas.height);
+  fctx.drawImage(temp,0,0,freezeCanvas.width,freezeCanvas.height);
+
+  // 🔥 hide video (แทน pause)
+  video.style.visibility="hidden";
 }
 
 // ===== STOP =====
@@ -34,30 +80,13 @@ function stopCamera(){
   stream=null;
   video.srcObject=null;
 
+  video.style.visibility="visible";
+
   frame=null;
   samples=[];
 
   ctx.clearRect(0,0,overlay.width,overlay.height);
-}
-
-// ===== CAPTURE =====
-function capture(){
-
-  const w=video.videoWidth;
-  const h=video.videoHeight;
-
-  const c=document.createElement("canvas");
-  c.width=w; c.height=h;
-
-  const cctx=c.getContext("2d");
-  cctx.drawImage(video,0,0);
-
-  frame = cctx.getImageData(0,0,w,h);
-
-  scaleX = w / overlay.width;
-  scaleY = h / overlay.height;
-
-  video.pause();
+  fctx.clearRect(0,0,freezeCanvas.width,freezeCanvas.height);
 }
 
 // ===== TAP =====
@@ -65,10 +94,10 @@ overlay.addEventListener("click",(e)=>{
 
   if(!frame) return;
 
-  const rect=overlay.getBoundingClientRect();
+  const rect = overlay.getBoundingClientRect();
 
-  const dx = e.clientX-rect.left;
-  const dy = e.clientY-rect.top;
+  const dx = e.clientX - rect.left;
+  const dy = e.clientY - rect.top;
 
   const x = dx * scaleX;
   const y = dy * scaleY;
