@@ -2,68 +2,64 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body { background:black; color:white; text-align:center; font-family:Arial; }
 
-.wrap{
+<style>
+body{
+  background:black;
+  color:white;
+  text-align:center;
+}
+
+.container{
   position:relative;
   width:320px;
   margin:auto;
 }
 
-video, canvas{
+/* 🔥 lock aspect ratio 7.1:12.8 */
+.aspect-box{
+  position:relative;
   width:100%;
-  display:block;
+  padding-top: calc(12.8 / 7.1 * 100%);
 }
 
-canvas{
+video, canvas{
   position:absolute;
   top:0;
   left:0;
+  width:100%;
+  height:100%;
+}
+
+canvas{
+  pointer-events:none;
 }
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Snap Grid + Detect</h3>
+<h3>Grid Alignment (7.1 x 12.8 cm)</h3>
 
-<div class="wrap">
-  <video id="video" autoplay playsinline muted></video>
-  <canvas id="canvas"></canvas>
+<div class="container">
+  <div class="aspect-box">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="grid"></canvas>
+  </div>
 </div>
 
 <br>
-
-<button onclick="start()">Start</button>
-<button onclick="capture()">Capture</button>
-<button onclick="autoGrid()">Auto Grid</button>
-<button onclick="detectCircles()">Detect Circles</button>
-<button onclick="snapGrid()">Snap Grid</button>
-<button onclick="reset()">Reset</button>
-
-<p id="log"></p>
+<button onclick="startCamera()">Start</button>
 
 <script>
 
 const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
+const canvas = document.getElementById("grid");
 const ctx = canvas.getContext("2d");
-const log = document.getElementById("log");
 
-let stream=null;
-let frame=null;
-let gray=null;
+async function startCamera(){
 
-let samples=[];     // grid
-let detected=[];    // detected circles
-
-let scaleX=1, scaleY=1;
-
-// ===== START =====
-async function start(){
-
-  stream = await navigator.mediaDevices.getUserMedia({
+  const stream = await navigator.mediaDevices.getUserMedia({
     video:{facingMode:"environment"}
   });
 
@@ -71,241 +67,80 @@ async function start(){
 
   video.onloadedmetadata = ()=>{
     video.play();
-
-    const rect = video.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-
-    log.innerText="camera ready";
+    resizeCanvas();
+    drawGrid();
   };
 }
 
-// ===== CAPTURE =====
-function capture(){
+function resizeCanvas(){
 
-  const w=video.videoWidth;
-  const h=video.videoHeight;
+  const rect = video.getBoundingClientRect();
 
-  const temp=document.createElement("canvas");
-  temp.width=w; temp.height=h;
-
-  const tctx=temp.getContext("2d");
-  tctx.drawImage(video,0,0,w,h);
-
-  frame = tctx.getImageData(0,0,w,h);
-
-  gray = toGray(frame);
-
-  scaleX = w / canvas.width;
-  scaleY = h / canvas.height;
-
-  ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-
-  log.innerText="captured";
+  canvas.width = rect.width;
+  canvas.height = rect.height;
 }
 
-// ===== TAP =====
-canvas.addEventListener("click",(e)=>{
+// ===== DRAW GRID =====
+function drawGrid(){
 
-  if(!frame) return;
-
-  const rect = canvas.getBoundingClientRect();
-  const dx = e.clientX-rect.left;
-  const dy = e.clientY-rect.top;
-
-  samples.push({x:dx,y:dy});
-  drawAll();
-});
-
-// ===== DRAW =====
-function drawAll(){
-
-  // redraw image
-  const temp=document.createElement("canvas");
-  temp.width=frame.width;
-  temp.height=frame.height;
-
-  temp.getContext("2d").putImageData(frame,0,0);
-  ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-
-  // detected (green)
-  detected.forEach(p=>{
-    ctx.beginPath();
-    ctx.arc(p.x/scaleX,p.y/scaleY,10,0,Math.PI*2);
-    ctx.strokeStyle="lime";
-    ctx.stroke();
-  });
-
-  // samples (white)
-  samples.forEach((s,i)=>{
-    ctx.beginPath();
-    ctx.arc(s.x,s.y,15,0,Math.PI*2);
-    ctx.strokeStyle="white";
-    ctx.stroke();
-
-    ctx.fillStyle="yellow";
-    ctx.fillText(i,s.x+5,s.y);
-  });
-}
-
-// ===== AUTO GRID =====
-function autoGrid(){
-
-  samples=[];
-
-  const rows=5, cols=4;
-
-  for(let r=1;r<=rows;r++){
-    for(let c=1;c<=cols;c++){
-
-      samples.push({
-        x: canvas.width*(c/(cols+1)),
-        y: canvas.height*(r/(rows+1))
-      });
-    }
-  }
-
-  drawAll();
-  log.innerText="grid OK";
-}
-
-// ===== DETECT CIRCLES (SAFE VERSION) =====
-function detectCircles(){
-
-  if(!frame) return;
-
-  let raw=[];
-
-  const w=frame.width;
-  const h=frame.height;
-
-  // scan ละเอียดขึ้น
-  for(let y=30;y<h-30;y+=10){
-    for(let x=30;x<w-30;x+=10){
-
-      let outer=0, inner=0, count=0;
-
-      for(let a=0;a<360;a+=20){
-
-        const rad=a*Math.PI/180;
-
-        const x1=Math.round(x+22*Math.cos(rad));
-        const y1=Math.round(y+22*Math.sin(rad));
-
-        const x2=Math.round(x+12*Math.cos(rad));
-        const y2=Math.round(y+12*Math.sin(rad));
-
-        if(x1<0||y1<0||x1>=w||y1>=h) continue;
-        if(x2<0||y2<0||x2>=w||y2>=h) continue;
-
-        outer+=gray[y1*w+x1];
-        inner+=gray[y2*w+x2];
-        count++;
-      }
-
-      if(count<8) continue;
-
-      const score = Math.abs((outer/count)-(inner/count));
-
-      if(score>20){  // ลด threshold
-        raw.push({x,y,score});
-      }
-    }
-  }
-
-  // ===== CLUSTER (merge จุดซ้ำ) =====
-  let clusters=[];
-
-  raw.forEach(p=>{
-
-    let found=false;
-
-    for(let c of clusters){
-      const d = Math.hypot(c.x-p.x,c.y-p.y);
-
-      if(d<20){
-        // average
-        c.x = (c.x + p.x)/2;
-        c.y = (c.y + p.y)/2;
-        c.score = Math.max(c.score,p.score);
-        found=true;
-        break;
-      }
-    }
-
-    if(!found){
-      clusters.push({...p});
-    }
-  });
-
-  // ===== FILTER เอาเฉพาะวงจริง =====
-  detected = clusters.filter(c => c.score > 25);
-
-  drawAll();
-  log.innerText = "detect " + detected.length;
-}
-
-// ===== SNAP GRID =====
-
-function snapGrid(){
-
-  if(detected.length===0){
-    log.innerText="no detected";
-    return;
-  }
-
-  samples = samples.map(s=>{
-
-    const ix = s.x * scaleX;
-    const iy = s.y * scaleY;
-
-    let best=null;
-    let bestD=9999;
-
-    detected.forEach(d=>{
-      const dist = Math.hypot(d.x-ix,d.y-iy);
-
-      if(dist<bestD){
-        bestD=dist;
-        best=d;
-      }
-    });
-
-    // 🔥 snap เฉพาะที่ใกล้จริง
-    if(best && bestD < 25){
-      return {
-        x: best.x / scaleX,
-        y: best.y / scaleY
-      };
-    }
-
-    return s;
-  });
-
-  drawAll();
-  log.innerText="snap refined";
-}
-// ===== RESET =====
-function reset(){
-  samples=[];
-  detected=[];
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  if(frame){
-    drawAll();
+  const cols = 4;
+  const rows = 5;
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const cellW = w / cols;
+  const cellH = h / rows;
+
+  // ===== outer frame =====
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0,0,w,h);
+
+  // ===== grid lines =====
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,0.6)";
+
+  for(let i=1;i<cols;i++){
+    ctx.beginPath();
+    ctx.moveTo(i*cellW,0);
+    ctx.lineTo(i*cellW,h);
+    ctx.stroke();
   }
 
-  log.innerText="reset";
+  for(let j=1;j<rows;j++){
+    ctx.beginPath();
+    ctx.moveTo(0,j*cellH);
+    ctx.lineTo(w,j*cellH);
+    ctx.stroke();
+  }
+
+  // ===== circles =====
+  ctx.strokeStyle = "lime";
+  ctx.lineWidth = 1.5;
+
+  const r = Math.min(cellW,cellH)*0.25;
+
+  for(let rIdx=0;rIdx<rows;rIdx++){
+    for(let cIdx=0;cIdx<cols;cIdx++){
+
+      const cx = (cIdx+0.5)*cellW;
+      const cy = (rIdx+0.5)*cellH;
+
+      ctx.beginPath();
+      ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.stroke();
+    }
+  }
 }
 
-// ===== UTIL =====
-function toGray(img){
-  const g=new Uint8ClampedArray(img.width*img.height);
-  for(let i=0,j=0;i<img.data.length;i+=4,j++){
-    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
-  }
-  return g;
-}
+// ===== resize fix =====
+window.addEventListener("resize",()=>{
+  resizeCanvas();
+  drawGrid();
+});
 
 </script>
 
