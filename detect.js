@@ -80,3 +80,17 @@ function detectPaperCorners(canvas) {
 
   return orderPoints(points);
 }
+
+function orderPoints(pts) {
+
+  // sort by sum (top-left, bottom-right)
+  let sum = pts.map(p => p.x + p.y);
+  let diff = pts.map(p => p.y - p.x);
+
+  return [
+    pts[sum.indexOf(Math.min(...sum))], // TL
+    pts[diff.indexOf(Math.min(...diff))], // TR
+    pts[sum.indexOf(Math.max(...sum))], // BR
+    pts[diff.indexOf(Math.max(...diff))]  // BL
+  ];
+}
