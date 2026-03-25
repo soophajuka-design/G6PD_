@@ -1,15 +1,37 @@
-let video = document.getElementById('video');
+let video;
+
+function initCameraElement() {
+  video = document.getElementById('video');
+}
 
 async function startCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
+    let constraints = {
+      video: {
+        facingMode: "environment"
+      },
       audio: false
-    });
+    };
+
+    let stream;
+
+    try {
+      // iOS บางเครื่องต้องไม่ใช้ exact
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (e) {
+      // fallback
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    }
 
     video.srcObject = stream;
-  } catch (e) {
-    alert("Camera error: " + e.message);
+
+    await video.play();
+
+    console.log("Camera started");
+
+  } catch (err) {
+    alert("Camera error: " + err.message);
+    console.error(err);
   }
 }
 
