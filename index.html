@@ -3,50 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>G6PD Analyzer PRO</title>
 
 <style>
-body { background:black; color:white; text-align:center; font-family:Arial; }
+body{background:black;color:white;text-align:center;font-family:Arial;}
 
-.container {
+.container{
   position:relative;
   width:320px;
   margin:auto;
-  overflow:hidden;
-  touch-action:none;
 }
 
-video {
+video{
   width:100%;
-  position:relative;
-  z-index:1;
 }
 
-#overlay {
+#overlay{
   position:absolute;
   top:0;
   left:0;
-  width:100%;
-  z-index:2;
 }
 
-#stage {
-  transform-origin:center center;
-}
-
-button { margin:5px; padding:10px; }
+button{margin:5px;padding:10px;}
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer PRO</h3>
+<h2>G6PD Analyzer PRO</h2>
 
 <div class="container">
-  <div id="stage">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="overlay"></canvas>
-  </div>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
 </div>
 
 <br>
@@ -57,12 +46,12 @@ button { margin:5px; padding:10px; }
 
 <br>
 
-<button id="btnDetect" onclick="autoDetect()">Auto Detect</button>
-<button id="btnControl" onclick="autoAssignControl()">Auto Control</button>
+<button onclick="autoDetect()">Auto Detect</button>
+<button onclick="autoGridAlign()">Auto Grid</button>
 
 <br>
 
-<button id="btnReset" onclick="resetSamples()">Reset</button>
+<button onclick="resetSamples()">Reset</button>
 
 <pre id="result"></pre>
 
