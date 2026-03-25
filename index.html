@@ -2,14 +2,8 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-body {
-  background:black;
-  color:white;
-  text-align:center;
-  font-family:Arial;
-}
+body { background:black; color:white; text-align:center; font-family:Arial; }
 
 .wrap{
   position:relative;
@@ -32,7 +26,7 @@ canvas{
 
 <body>
 
-<h3>G6PD Stable Build</h3>
+<h3>G6PD Snap Grid + Detect</h3>
 
 <div class="wrap">
   <video id="video" autoplay playsinline muted></video>
@@ -44,6 +38,8 @@ canvas{
 <button onclick="start()">Start</button>
 <button onclick="capture()">Capture</button>
 <button onclick="autoGrid()">Auto Grid</button>
+<button onclick="detectCircles()">Detect Circles</button>
+<button onclick="snapGrid()">Snap Grid</button>
 <button onclick="reset()">Reset</button>
 
 <p id="log"></p>
@@ -55,106 +51,93 @@ const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const log = document.getElementById("log");
 
-let stream = null;
-let frame = null;
-let samples = [];
+let stream=null;
+let frame=null;
+let gray=null;
 
-let scaleX = 1;
-let scaleY = 1;
+let samples=[];     // grid
+let detected=[];    // detected circles
 
-// ===== START CAMERA =====
+let scaleX=1, scaleY=1;
+
+// ===== START =====
 async function start(){
 
-  try{
-    stream = await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:"environment"}
-    });
+  stream = await navigator.mediaDevices.getUserMedia({
+    video:{facingMode:"environment"}
+  });
 
-    video.srcObject = stream;
+  video.srcObject = stream;
 
-    video.onloadedmetadata = () => {
+  video.onloadedmetadata = ()=>{
+    video.play();
 
-      video.play();
+    const rect = video.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
 
-      const rect = video.getBoundingClientRect();
-
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-
-      log.innerText = "camera ready";
-    };
-
-  }catch(e){
-    log.innerText = "camera error: " + e;
-  }
+    log.innerText="camera ready";
+  };
 }
 
 // ===== CAPTURE =====
 function capture(){
 
-  if(!video.videoWidth){
-    log.innerText = "video not ready";
-    return;
-  }
+  const w=video.videoWidth;
+  const h=video.videoHeight;
 
-  const w = video.videoWidth;
-  const h = video.videoHeight;
+  const temp=document.createElement("canvas");
+  temp.width=w; temp.height=h;
 
-  const temp = document.createElement("canvas");
-  temp.width = w;
-  temp.height = h;
-
-  const tctx = temp.getContext("2d");
+  const tctx=temp.getContext("2d");
   tctx.drawImage(video,0,0,w,h);
 
   frame = tctx.getImageData(0,0,w,h);
 
+  gray = toGray(frame);
+
   scaleX = w / canvas.width;
   scaleY = h / canvas.height;
 
-  // draw frozen image
   ctx.drawImage(temp,0,0,canvas.width,canvas.height);
 
-  log.innerText = "captured OK";
+  log.innerText="captured";
 }
 
 // ===== TAP =====
 canvas.addEventListener("click",(e)=>{
 
-  if(!frame){
-    log.innerText = "tap but no frame";
-    return;
-  }
+  if(!frame) return;
 
   const rect = canvas.getBoundingClientRect();
+  const dx = e.clientX-rect.left;
+  const dy = e.clientY-rect.top;
 
-  const dx = e.clientX - rect.left;
-  const dy = e.clientY - rect.top;
-
-  samples.push({x:dx, y:dy});
-
+  samples.push({x:dx,y:dy});
   drawAll();
-
-  log.innerText = `tap (${Math.round(dx)}, ${Math.round(dy)})`;
 });
 
 // ===== DRAW =====
 function drawAll(){
 
-  if(frame){
+  // redraw image
+  const temp=document.createElement("canvas");
+  temp.width=frame.width;
+  temp.height=frame.height;
 
-    const temp = document.createElement("canvas");
-    temp.width = frame.width;
-    temp.height = frame.height;
+  temp.getContext("2d").putImageData(frame,0,0);
+  ctx.drawImage(temp,0,0,canvas.width,canvas.height);
 
-    const tctx = temp.getContext("2d");
-    tctx.putImageData(frame,0,0);
+  // detected (green)
+  detected.forEach(p=>{
+    ctx.beginPath();
+    ctx.arc(p.x/scaleX,p.y/scaleY,10,0,Math.PI*2);
+    ctx.strokeStyle="lime";
+    ctx.stroke();
+  });
 
-    ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-  }
-
+  // samples (white)
   samples.forEach((s,i)=>{
-
     ctx.beginPath();
     ctx.arc(s.x,s.y,15,0,Math.PI*2);
     ctx.strokeStyle="white";
@@ -168,51 +151,126 @@ function drawAll(){
 // ===== AUTO GRID =====
 function autoGrid(){
 
-  if(!frame){
-    log.innerText = "no frame";
-    return;
-  }
+  samples=[];
 
-  samples = [];
-
-  const rows = 5;
-  const cols = 4;
+  const rows=5, cols=4;
 
   for(let r=1;r<=rows;r++){
     for(let c=1;c<=cols;c++){
 
-      const x = canvas.width * (c/(cols+1));
-      const y = canvas.height * (r/(rows+1));
-
-      samples.push({x,y});
+      samples.push({
+        x: canvas.width*(c/(cols+1)),
+        y: canvas.height*(r/(rows+1))
+      });
     }
   }
 
   drawAll();
+  log.innerText="grid OK";
+}
 
-  log.innerText = "grid OK";
+// ===== DETECT CIRCLES (SAFE VERSION) =====
+function detectCircles(){
+
+  if(!frame) return;
+
+  detected=[];
+
+  const w=frame.width;
+  const h=frame.height;
+
+  for(let y=40;y<h-40;y+=20){
+    for(let x=40;x<w-40;x+=20){
+
+      let outer=0, inner=0, count=0;
+
+      for(let a=0;a<360;a+=30){
+
+        const rad=a*Math.PI/180;
+
+        const x1=Math.round(x+20*Math.cos(rad));
+        const y1=Math.round(y+20*Math.sin(rad));
+
+        const x2=Math.round(x+12*Math.cos(rad));
+        const y2=Math.round(y+12*Math.sin(rad));
+
+        if(x1<0||y1<0||x1>=w||y1>=h) continue;
+        if(x2<0||y2<0||x2>=w||y2>=h) continue;
+
+        outer+=gray[y1*w+x1];
+        inner+=gray[y2*w+x2];
+        count++;
+      }
+
+      if(count<5) continue;
+
+      const score = Math.abs((outer/count)-(inner/count));
+
+      if(score>25){
+        detected.push({x,y});
+      }
+    }
+  }
+
+  drawAll();
+  log.innerText=`detect ${detected.length}`;
+}
+
+// ===== SNAP GRID =====
+function snapGrid(){
+
+  if(detected.length===0) return;
+
+  samples = samples.map(s=>{
+
+    const ix = s.x * scaleX;
+    const iy = s.y * scaleY;
+
+    let best=null;
+    let bestD=9999;
+
+    detected.forEach(d=>{
+      const dist = Math.hypot(d.x-ix,d.y-iy);
+      if(dist<bestD){
+        bestD=dist;
+        best=d;
+      }
+    });
+
+    if(best && bestD<40){
+      return {
+        x: best.x/scaleX,
+        y: best.y/scaleY
+      };
+    }
+
+    return s;
+  });
+
+  drawAll();
+  log.innerText="snap OK";
 }
 
 // ===== RESET =====
 function reset(){
-
-  samples = [];
+  samples=[];
+  detected=[];
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
   if(frame){
-
-    const temp = document.createElement("canvas");
-    temp.width = frame.width;
-    temp.height = frame.height;
-
-    const tctx = temp.getContext("2d");
-    tctx.putImageData(frame,0,0);
-
-    ctx.drawImage(temp,0,0,canvas.width,canvas.height);
-  }else{
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawAll();
   }
 
-  log.innerText = "reset OK";
+  log.innerText="reset";
+}
+
+// ===== UTIL =====
+function toGray(img){
+  const g=new Uint8ClampedArray(img.width*img.height);
+  for(let i=0,j=0;i<img.data.length;i+=4,j++){
+    g[j]=(img.data[i]+img.data[i+1]+img.data[i+2])/3;
+  }
+  return g;
 }
 
 </script>
