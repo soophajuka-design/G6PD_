@@ -3,48 +3,72 @@ const overlay = document.getElementById("overlay");
 const resultBox = document.getElementById("result");
 
 let stream=null;
+
 let cachedFrame=null;
 let cachedGray=null;
 
 let samples=[];
 let control={normal:null,deficient:null};
 
-function startCamera(){
+let displayScaleX=1;
+let displayScaleY=1;
 
-  navigator.mediaDevices.getUserMedia({
-    video:{facingMode:"environment"}
-  }).then(s=>{
+// ===== STATE =====
+let state="idle";
 
-    stream=s;
-    video.srcObject=s;
+// ===== CAMERA =====
+async function startCamera(){
 
-    setTimeout(syncCanvas,500);
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:"environment"}
+    });
 
-  }).catch(()=>alert("camera error"));
+    video.srcObject = stream;
+    await video.play();
+
+    syncCanvas();
+
+    state="camera";
+    resultBox.textContent="✅ Camera ON";
+
+  }catch(e){
+    resultBox.textContent="❌ Camera error";
+  }
 }
 
 function stopCamera(){
 
   if(stream){
     stream.getTracks().forEach(t=>t.stop());
+    stream=null;
   }
 
   video.srcObject=null;
 
+  cachedFrame=null;
+  cachedGray=null;
+
   samples=[];
   control={normal:null,deficient:null};
 
-  overlay.getContext("2d").clearRect(0,0,overlay.width,overlay.height);
+  clearOverlay();
 
-  resultBox.textContent="reset";
+  state="idle";
+  resultBox.textContent="🔄 Reset";
 }
 
+// ===== SYNC =====
 function syncCanvas(){
-  overlay.width=video.clientWidth;
-  overlay.height=video.clientHeight;
+
+  overlay.width = video.clientWidth;
+  overlay.height = video.clientHeight;
 }
 
-function captureFrame(){
+// ===== CAPTURE =====
+async function captureFrame(){
+
+  if(!video.srcObject) return;
 
   const w=video.videoWidth;
   const h=video.videoHeight;
@@ -61,23 +85,28 @@ function captureFrame(){
 
   cachedGray = toGray(frame);
 
-  // perspective
+  // ===== perspective =====
   const corners = detectPaperCorners();
 
   if(!corners){
-    resultBox.textContent="no paper";
+    resultBox.textContent="❌ No paper";
     return;
   }
 
   cachedFrame = warpPerspective(frame,corners);
   cachedGray = toGray(cachedFrame);
 
+  // ===== scale mapping =====
+  displayScaleX = cachedFrame.width / overlay.width;
+  displayScaleY = cachedFrame.height / overlay.height;
+
   video.pause();
 
-  resultBox.textContent="captured";
+  state="captured";
+  resultBox.textContent="✅ Captured";
 }
 
-// normalize
+// ===== NORMALIZE =====
 function normalizeFrame(frame){
 
   const out=new Uint8ClampedArray(frame.data.length);
@@ -96,6 +125,7 @@ function normalizeFrame(frame){
   return new ImageData(out,frame.width,frame.height);
 }
 
+// ===== GRAY =====
 function toGray(img){
 
   const g=new Uint8ClampedArray(img.width*img.height);
@@ -107,14 +137,19 @@ function toGray(img){
   return g;
 }
 
-// TAP = add OR set control
+// ===== TAP =====
 overlay.addEventListener("click",(e)=>{
 
-  if(!cachedFrame) return;
+  if(state!=="captured") return;
 
   const rect=overlay.getBoundingClientRect();
+
   const x=e.clientX-rect.left;
   const y=e.clientY-rect.top;
+
+  // map → image space
+  const ix = x * displayScaleX;
+  const iy = y * displayScaleY;
 
   let found=null;
 
@@ -125,6 +160,7 @@ overlay.addEventListener("click",(e)=>{
     }
   }
 
+  // ===== set control =====
   if(found){
 
     if(!control.normal){
@@ -140,17 +176,21 @@ overlay.addEventListener("click",(e)=>{
     return;
   }
 
-  addCircle(x,y);
+  // ===== add =====
+  const rgb = readRGB(cachedFrame,ix,iy,25);
+
+  samples.push({
+    x:x,
+    y:y,
+    r:25,
+    rgb,
+    manual:true
+  });
+
+  drawAll();
 });
 
-function addCircle(x,y){
-
-  const rgb = readRGB(cachedFrame,x,y,25);
-
-  samples.push({x,y,r:25,rgb,manual:true});
-  drawAll();
-}
-
+// ===== RGB =====
 function readRGB(frame,cx,cy,r){
 
   let R=0,G=0,B=0,count=0;
@@ -178,6 +218,7 @@ function readRGB(frame,cx,cy,r){
   return {r:R/count,g:G/count,b:B/count};
 }
 
+// ===== DRAW =====
 function drawAll(){
 
   const ctx=overlay.getContext("2d");
@@ -203,6 +244,10 @@ function drawAll(){
       ctx.fillText("D",s.x+15,s.y);
     }
   });
+}
+
+function clearOverlay(){
+  overlay.getContext("2d").clearRect(0,0,overlay.width,overlay.height);
 }
 
 function resetSamples(){
