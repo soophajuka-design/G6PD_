@@ -2,27 +2,24 @@
 
 // analyzer.js
 
-      
-function analyze(){
 
-  let results = [];
+async function analyze(){
 
-  for(let r=0;r<5;r++){
-    for(let c=0;c<4;c++){
+  const frame = captureFrame();
 
-      let cell = gridState[r][c];
+  // 1. detect corners
+  let corners = detectPaperCorners(frame);
 
-      if(!cell.selected) continue;
-
-      results.push({
-        row:r,
-        col:c,
-        type:cell.type
-      });
-    }
+  if(!corners){
+    alert("Paper not detected");
+    return;
   }
 
-  console.log("Analyze result:", results);
+  // 2. warp
+  let warped = warpPaper(frame, corners);
 
-  alert("Selected points: " + results.length);
+  // debug: show warped
+  cv.imshow('overlay', warped);
+
+  console.log("Warp complete");
 }
