@@ -174,22 +174,23 @@ function detectCircles(){
 
   if(!frame) return;
 
-  detected=[];
+  let raw=[];
 
   const w=frame.width;
   const h=frame.height;
 
-  for(let y=40;y<h-40;y+=20){
-    for(let x=40;x<w-40;x+=20){
+  // scan ละเอียดขึ้น
+  for(let y=30;y<h-30;y+=10){
+    for(let x=30;x<w-30;x+=10){
 
       let outer=0, inner=0, count=0;
 
-      for(let a=0;a<360;a+=30){
+      for(let a=0;a<360;a+=20){
 
         const rad=a*Math.PI/180;
 
-        const x1=Math.round(x+20*Math.cos(rad));
-        const y1=Math.round(y+20*Math.sin(rad));
+        const x1=Math.round(x+22*Math.cos(rad));
+        const y1=Math.round(y+22*Math.sin(rad));
 
         const x2=Math.round(x+12*Math.cos(rad));
         const y2=Math.round(y+12*Math.sin(rad));
@@ -202,21 +203,50 @@ function detectCircles(){
         count++;
       }
 
-      if(count<5) continue;
+      if(count<8) continue;
 
       const score = Math.abs((outer/count)-(inner/count));
 
-      if(score>25){
-        detected.push({x,y});
+      if(score>20){  // ลด threshold
+        raw.push({x,y,score});
       }
     }
   }
 
+  // ===== CLUSTER (merge จุดซ้ำ) =====
+  let clusters=[];
+
+  raw.forEach(p=>{
+
+    let found=false;
+
+    for(let c of clusters){
+      const d = Math.hypot(c.x-p.x,c.y-p.y);
+
+      if(d<20){
+        // average
+        c.x = (c.x + p.x)/2;
+        c.y = (c.y + p.y)/2;
+        c.score = Math.max(c.score,p.score);
+        found=true;
+        break;
+      }
+    }
+
+    if(!found){
+      clusters.push({...p});
+    }
+  });
+
+  // ===== FILTER เอาเฉพาะวงจริง =====
+  detected = clusters.filter(c => c.score > 25);
+
   drawAll();
-  log.innerText=`detect ${detected.length}`;
+  log.innerText = "detect " + detected.length;
 }
 
 // ===== SNAP GRID =====
+
 function snapGrid(){
 
   if(detected.length===0) return;
@@ -250,7 +280,6 @@ function snapGrid(){
   drawAll();
   log.innerText="snap OK";
 }
-
 // ===== RESET =====
 function reset(){
   samples=[];
