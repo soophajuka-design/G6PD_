@@ -1,5 +1,3 @@
-
-
 let video = document.getElementById('video');
 
 async function startCamera() {
