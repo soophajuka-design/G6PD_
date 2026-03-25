@@ -1,61 +1,215 @@
+// ===== CORNER DETECTION =====
+
+function detectPaperCorners(){
+
+  const w=cachedFrame.width;
+  const h=cachedFrame.height;
+
+  const edges = detectEdges(cachedGray,w,h);
+  const contours = findContours(edges,w,h);
+
+  if(contours.length===0) return null;
+
+  const paper = contours.sort((a,b)=>b.length-a.length)[0];
+
+  return approxQuad(paper);
+}
+
+// edge
+function detectEdges(g,w,h){
+
+  const out=new Uint8ClampedArray(w*h);
+
+  for(let y=1;y<h-1;y++){
+    for(let x=1;x<w-1;x++){
+
+      const gx = g[y*w+(x+1)] - g[y*w+(x-1)];
+      const gy = g[(y+1)*w+x] - g[(y-1)*w+x];
+
+      out[y*w+x] = (Math.abs(gx)+Math.abs(gy))>80?255:0;
+    }
+  }
+
+  return out;
+}
+
+// contour
+function findContours(edge,w,h){
+
+  const visited=new Uint8Array(w*h);
+  const contours=[];
+
+  for(let i=0;i<w*h;i++){
+
+    if(edge[i]===255 && !visited[i]){
+
+      let stack=[i];
+      let pts=[];
+
+      while(stack.length){
+
+        const idx=stack.pop();
+        if(visited[idx]) continue;
+
+        visited[idx]=1;
+
+        const x=idx%w;
+        const y=Math.floor(idx/w);
+
+        pts.push({x,y});
+
+        for(let dy=-1;dy<=1;dy++){
+          for(let dx=-1;dx<=1;dx++){
+
+            const nx=x+dx;
+            const ny=y+dy;
+
+            if(nx<0||ny<0||nx>=w||ny>=h) continue;
+
+            const ni=ny*w+nx;
+
+            if(edge[ni]===255 && !visited[ni]){
+              stack.push(ni);
+            }
+          }
+        }
+      }
+
+      if(pts.length>300){
+        contours.push(pts);
+      }
+    }
+  }
+
+  return contours;
+}
+
+// quad
+function approxQuad(points){
+
+  let tl={x:9999,y:9999};
+  let tr={x:0,y:9999};
+  let br={x:0,y:0};
+  let bl={x:9999,y:0};
+
+  points.forEach(p=>{
+
+    if(p.x+p.y < tl.x+tl.y) tl=p;
+    if(p.x-p.y > tr.x-tr.y) tr=p;
+    if(p.x+p.y > br.x+br.y) br=p;
+    if(p.x-p.y < bl.x-bl.y) bl=p;
+
+  });
+
+  return [tl,tr,br,bl];
+}
+
+// ===== WARP =====
+function warpPerspective(src,c){
+
+  const W=300,H=500;
+  const dst=new ImageData(W,H);
+
+  const [tl,tr,br,bl]=c;
+
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+
+      const u=x/W,v=y/H;
+
+      const sx=
+        (1-u)*(1-v)*tl.x +
+        u*(1-v)*tr.x +
+        u*v*br.x +
+        (1-u)*v*bl.x;
+
+      const sy=
+        (1-u)*(1-v)*tl.y +
+        u*(1-v)*tr.y +
+        u*v*br.y +
+        (1-u)*v*bl.y;
+
+      const px=Math.floor(sx);
+      const py=Math.floor(sy);
+
+      if(px<0||py<0||px>=src.width||py>=src.height) continue;
+
+      const si=(py*src.width+px)*4;
+      const di=(y*W+x)*4;
+
+      dst.data[di]=src.data[si];
+      dst.data[di+1]=src.data[si+1];
+      dst.data[di+2]=src.data[si+2];
+      dst.data[di+3]=255;
+    }
+  }
+
+  return dst;
+}
+
+// ===== AUTO DETECT =====
 function autoDetect(){
 
-  if(!cachedFrame){
-    resultBox.textContent="⚠️ Capture ก่อน";
-    return;
-  }
+  if(!cachedFrame) return;
 
   const w=cachedFrame.width;
   const h=cachedFrame.height;
   const g=cachedGray;
 
-  let newSamples=[];
+  samples=[];
 
-  for(let y=40;y<h-40;y+=6){
-    for(let x=40;x<w-40;x+=6){
+  for(let y=40;y<h-40;y+=20){
+    for(let x=40;x<w-40;x+=20){
 
-      let vals=[];
-      for(let a=0;a<360;a+=20){
+      let s=0;
+
+      for(let a=0;a<360;a+=30){
+
         const rad=a*Math.PI/180;
+
         const px=Math.round(x+25*Math.cos(rad));
         const py=Math.round(y+25*Math.sin(rad));
 
         if(px<0||py<0||px>=w||py>=h) continue;
-        vals.push(g[py*w+px]);
+
+        s+=g[py*w+px];
       }
 
-      const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
-      let variance=vals.reduce((a,v)=>a+(v-mean)*(v-mean),0);
-
-      if(variance<500 && mean<180){
-
-        let tooClose=false;
-
-        for(let s of samples){
-          const dx=(s.x*w/overlay.width)-x;
-          const dy=(s.y*h/overlay.height)-y;
-          if(Math.hypot(dx,dy)<35){
-            tooClose=true;
-            break;
-          }
-        }
-
-        if(!tooClose){
-          newSamples.push({x,y});
-        }
+      if(s<4000){
+        samples.push({x,y,r:25});
       }
     }
   }
 
-  const scaleF=cachedFrame.width/overlay.width;
+  drawAll();
+}
 
-  newSamples.forEach(p=>{
-    const ox=p.x/scaleF;
-    const oy=p.y/scaleF;
-    const rgb=readRGB(cachedFrame,ox,oy,25);
-    samples.push({x:ox,y:oy,r:25,rgb});
-  });
+// ===== GRID ALIGN =====
+function autoGridAlign(){
+
+  if(!cachedFrame) return;
+
+  const w=cachedFrame.width;
+  const h=cachedFrame.height;
+
+  const rows=5, cols=4;
+
+  const dx=w/(cols+1);
+  const dy=h/(rows+1);
+
+  samples=[];
+
+  for(let r=1;r<=rows;r++){
+    for(let c=1;c<=cols;c++){
+
+      const x=c*dx;
+      const y=r*dy;
+
+      const rgb=readRGB(cachedFrame,x,y,25);
+
+      samples.push({x,y,r:25,rgb});
+    }
+  }
 
   drawAll();
-  resultBox.textContent=`✅ Detect ${samples.length}`;
 }
