@@ -249,7 +249,10 @@ function detectCircles(){
 
 function snapGrid(){
 
-  if(detected.length===0) return;
+  if(detected.length===0){
+    log.innerText="no detected";
+    return;
+  }
 
   samples = samples.map(s=>{
 
@@ -261,16 +264,18 @@ function snapGrid(){
 
     detected.forEach(d=>{
       const dist = Math.hypot(d.x-ix,d.y-iy);
+
       if(dist<bestD){
         bestD=dist;
         best=d;
       }
     });
 
-    if(best && bestD<40){
+    // 🔥 snap เฉพาะที่ใกล้จริง
+    if(best && bestD < 25){
       return {
-        x: best.x/scaleX,
-        y: best.y/scaleY
+        x: best.x / scaleX,
+        y: best.y / scaleY
       };
     }
 
@@ -278,7 +283,7 @@ function snapGrid(){
   });
 
   drawAll();
-  log.innerText="snap OK";
+  log.innerText="snap refined";
 }
 // ===== RESET =====
 function reset(){
