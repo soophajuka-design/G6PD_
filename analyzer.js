@@ -1,7 +1,7 @@
 // analyzer.js
 
 async function analyze(){
-
+   console.log("🔥 analyze called");
   const frame = captureFrame();
 
   // 1. detect
