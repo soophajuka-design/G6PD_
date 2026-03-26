@@ -1,3 +1,6 @@
+const WARP_W = 710;   // 7.1 cm * 100
+const WARP_H = 1280;  // 12.8 cm * 100
+
 let mode = "sample"; // default = tap = sample
 
 function setMode(m) {
@@ -115,3 +118,60 @@ function handleTap(x,y,geo){
 
   console.log("Tap:", row, col, cell);
 }
+function getWarpGrid() {
+
+  const cols = 4;
+  const rows = 5;
+
+  const cw = WARP_W / cols;
+  const ch = WARP_H / rows;
+
+  let cells = [];
+
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+
+      cells.push({
+        row:r,
+        col:c,
+        x: c*cw,
+        y: r*ch,
+        w: cw,
+        h: ch
+      });
+    }
+  }
+
+  return cells;
+}
+function drawWarpGrid(mat){
+
+  const canvas = document.createElement('canvas');
+  canvas.width = WARP_W;
+  canvas.height = WARP_H;
+
+  cv.imshow(canvas, mat);
+
+  const ctx = canvas.getContext('2d');
+
+  const cells = getWarpGrid();
+
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 2;
+
+  cells.forEach(cell=>{
+    ctx.strokeRect(cell.x, cell.y, cell.w, cell.h);
+
+    ctx.beginPath();
+    ctx.arc(
+      cell.x + cell.w/2,
+      cell.y + cell.h/2,
+      Math.min(cell.w,cell.h)*0.3,
+      0, 2*Math.PI
+    );
+    ctx.stroke();
+  });
+
+  return canvas;
+}
+
