@@ -1,27 +1,26 @@
-function computeIntensity(roi){
+// === AI HELPERS ===
 
+function computeIntensity(roi){
   let gray = new cv.Mat();
   cv.cvtColor(roi, gray, cv.COLOR_RGBA2GRAY);
-
   let mean = cv.mean(gray)[0];
-
   gray.delete();
-
   return mean;
 }
+
 function normalizeIntensity(value, min, max){
-
   if(max - min === 0) return 0;
-
   return (value - min) / (max - min);
 }
-function classifyG6PD(norm){
 
+function classifyG6PD(norm){
   if(norm > 0.7) return "Normal";
   if(norm > 0.3) return "Intermediate";
   return "Deficient";
 }
 
+
+// === MAIN ===
 
 async function analyze(){
 
@@ -29,13 +28,13 @@ async function analyze(){
 
   try {
 
-    // ✅ check OpenCV
+    // ✅ OpenCV check
     if(typeof cv === "undefined"){
       alert("OpenCV not loaded");
       return;
     }
 
-    // ✅ check video ready
+    // ✅ camera check
     if(!video || video.videoWidth === 0){
       alert("Camera not ready");
       return;
@@ -43,7 +42,6 @@ async function analyze(){
 
     // 1. capture
     const frame = captureFrame();
-
     if(!frame){
       alert("Capture failed");
       return;
@@ -53,7 +51,6 @@ async function analyze(){
 
     // 2. detect
     let corners = detectPaperCorners(frame);
-
     if(!corners){
       alert("Paper not detected");
       return;
@@ -63,8 +60,6 @@ async function analyze(){
 
     // 3. warp
     let warped = warpPaper(frame, corners);
-    let intensities = [];
-    
     if(!warped){
       alert("Warp failed");
       return;
@@ -81,7 +76,7 @@ async function analyze(){
     canvas.id = "resultCanvas";
     document.body.appendChild(canvas);
 
-    // 5. ROI extraction
+    // 5. ROI + intensity
     let selected = getSelectedCells();
 
     if(selected.length === 0){
@@ -90,12 +85,48 @@ async function analyze(){
       return;
     }
 
+    let intensities = [];
+
     selected.forEach(cell=>{
       let roi = extractROI(warped, cell);
 
-      console.log("Cell:", cell.row, cell.col, cell.type);
+      let val = computeIntensity(roi);
+
+      intensities.push({
+        ...cell,
+        intensity: val
+      });
 
       roi.delete();
+    });
+
+    // 6. find controls
+    let normalCtrl = intensities.find(c=>c.type==="normal");
+    let deficientCtrl = intensities.find(c=>c.type==="deficient");
+
+    if(!normalCtrl || !deficientCtrl){
+      alert("ต้องกำหนด control normal และ deficient");
+      warped.delete();
+      return;
+    }
+
+    // 7. normalize + classify
+    intensities.forEach(cell=>{
+
+      let norm = normalizeIntensity(
+        cell.intensity,
+        deficientCtrl.intensity,
+        normalCtrl.intensity
+      );
+
+      let result = classifyG6PD(norm);
+
+      console.log(
+        "Cell:", cell.row, cell.col,
+        "Raw:", cell.intensity.toFixed(1),
+        "Norm:", norm.toFixed(2),
+        "Result:", result
+      );
     });
 
     warped.delete();
@@ -110,5 +141,5 @@ async function analyze(){
   }
 }
 
-// 🔥 สำคัญ (ต้องมี)
+// 🔥 สำคัญ
 window.analyze = analyze;
