@@ -43,3 +43,37 @@ async function analyze(){
 
   console.log("Analyze complete");
 }
+
+// 🔻 วาง helper functions ไว้ด้านบน หรือด้านล่างก็ได้
+// แต่ต้องอยู่นอก analyze()
+
+function getSelectedCells(){
+
+  let cells = getWarpGrid();
+  let selected = [];
+
+  cells.forEach(cell=>{
+    let state = gridState[cell.row][cell.col];
+
+    if(state.selected){
+      selected.push({
+        ...cell,
+        type: state.type
+      });
+    }
+  });
+
+  return selected;
+}
+
+function extractROI(mat, cell){
+
+  let x = Math.max(0, Math.floor(cell.x));
+  let y = Math.max(0, Math.floor(cell.y));
+  let w = Math.floor(cell.w);
+  let h = Math.floor(cell.h);
+
+  let rect = new cv.Rect(x, y, w, h);
+
+  return mat.roi(rect);
+}
