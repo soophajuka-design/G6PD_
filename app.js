@@ -15,17 +15,35 @@ window.onload = () => {
     startLoop();
   };
 
-  overlay.addEventListener('click', (e)=>{
-    if(!isCameraOn) return;
+ overlay.addEventListener('click', (e)=>{
 
-    const rect = overlay.getBoundingClientRect();
+  if(!isCameraOn) return;
 
-    const x = (e.clientX - rect.left) * (overlay.width / rect.width);
-    const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+  const rect = overlay.getBoundingClientRect();
 
-    handleTap(x,y,geo);
-  });
+  const x = (e.clientX - rect.left) * (overlay.width / rect.width);
+  const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+
+  handleTap(x, y, geo);
+
+  // ✅ บังคับ redraw ทันที
+  redrawOverlay();
+});
 };
+overlay.addEventListener('click', (e)=>{
+
+  if(!isCameraOn) return;
+
+  const rect = overlay.getBoundingClientRect();
+
+  const x = (e.clientX - rect.left) * (overlay.width / rect.width);
+  const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+
+  handleTap(x, y, geo);
+
+  // ✅ บังคับ redraw ทันที
+  redrawOverlay();
+});
 
 function startLoop(){
 
@@ -36,17 +54,11 @@ function startLoop(){
       overlay.width = video.videoWidth;
       overlay.height = video.videoHeight;
 
-      // 1. วาด grid ก่อน
-      geo = drawGrid(overlay, ctx);
-
-      // 2. capture frame
-      let frame = captureFrame();
-
-      // 3. detect paper
-      let corners = detectPaperCorners(frame);
-
-      // 4. วาดจุดมุม (debug)
-      drawCorners(ctx, corners);
+      // ❗ ไม่ต้อง redraw ทุก frame
+      if(!window.rendered){
+        geo = drawGrid(overlay, ctx);
+        window.rendered = true;
+      }
     }
 
     requestAnimationFrame(loop);
