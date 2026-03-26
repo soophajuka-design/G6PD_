@@ -1,3 +1,28 @@
+function computeIntensity(roi){
+
+  let gray = new cv.Mat();
+  cv.cvtColor(roi, gray, cv.COLOR_RGBA2GRAY);
+
+  let mean = cv.mean(gray)[0];
+
+  gray.delete();
+
+  return mean;
+}
+function normalizeIntensity(value, min, max){
+
+  if(max - min === 0) return 0;
+
+  return (value - min) / (max - min);
+}
+function classifyG6PD(norm){
+
+  if(norm > 0.7) return "Normal";
+  if(norm > 0.3) return "Intermediate";
+  return "Deficient";
+}
+
+
 async function analyze(){
 
   console.log("🔥 analyze called");
@@ -38,7 +63,8 @@ async function analyze(){
 
     // 3. warp
     let warped = warpPaper(frame, corners);
-
+    let intensities = [];
+    
     if(!warped){
       alert("Warp failed");
       return;
