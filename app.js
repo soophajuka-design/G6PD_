@@ -10,12 +10,14 @@ window.onload = () => {
   overlay = document.getElementById('overlay');
   ctx = overlay.getContext('2d');
 
+  // START CAMERA
   document.getElementById('startBtn').onclick = async () => {
     await startCamera();
     isCameraOn = true;
     startLoop();
   };
 
+  // TAP SELECT
   overlay.addEventListener('click', (e)=>{
 
     if(!isCameraOn) return;
@@ -27,9 +29,26 @@ window.onload = () => {
 
     handleTap(x, y, geo);
 
-    // 🔥 สั่ง redraw
     needRedraw = true;
   });
+
+  // 🔥 FIX: bind analyze button
+  const analyzeBtn = document.getElementById("analyzeBtn");
+
+  if(analyzeBtn){
+    analyzeBtn.onclick = ()=>{
+
+      if(typeof analyze !== "function"){
+        alert("analyze() not loaded");
+        console.error("analyze not found");
+        return;
+      }
+
+      console.log("✅ Analyze clicked");
+
+      analyze();
+    };
+  }
 };
 
 function startLoop(){
@@ -38,7 +57,6 @@ function startLoop(){
 
     if(video.videoWidth > 0){
 
-      // resize เฉพาะตอนยังไม่ set
       if(overlay.width !== video.videoWidth ||
          overlay.height !== video.videoHeight){
 
@@ -48,7 +66,6 @@ function startLoop(){
         needRedraw = true;
       }
 
-      // 🔥 redraw เมื่อจำเป็นเท่านั้น
       if(needRedraw){
         ctx.clearRect(0,0,overlay.width, overlay.height);
         geo = drawGrid(overlay, ctx);
