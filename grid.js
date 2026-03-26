@@ -55,17 +55,17 @@ function drawGrid(canvas, ctx) {
 
       // ===== สีตามสถานะ =====
       if(cell.type==="normal") {
-        ctx.strokeStyle="#22c55e"; // เขียว
+         ctx.strokeStyle="#22c55e"; // เขียว
       }
       else if(cell.type==="deficient") {
-        ctx.strokeStyle="#ef4444"; // แดง
+         ctx.strokeStyle="#ef4444"; // แดง
       }
       else if(cell.selected) {
-        ctx.strokeStyle="#facc15"; // เหลือง
-      }
-      else {
-        ctx.strokeStyle="#ffffff"; // ขาว (grid default)
-      }
+         ctx.strokeStyle="#facc15"; // เหลือง (sample)
+     }
+     else {
+         ctx.strokeStyle="#ffffff"; // grid
+     }
       ctx.shadowColor = "rgba(255,255,255,0.4)";
       ctx.shadowBlur = 4;
       ctx.strokeRect(x,y,cw,ch);
