@@ -1,5 +1,5 @@
 // analyzer.js
-
+window.analyze = analyze;
 async function analyze(){
    console.log("🔥 analyze called");
   const frame = captureFrame();
