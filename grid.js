@@ -101,15 +101,17 @@ function handleTap(x,y,geo){
   }
 
   // 🔥 assign control
-  if(mode === "normal") {
+   if(mode === "normal") {
     cell.selected = true;
     cell.type = "normal";
-  }
+    mode = "sample"; // กลับอัตโนมัติ
+   }
 
   if(mode === "deficient") {
     cell.selected = true;
     cell.type = "deficient";
-  }
+    mode = "sample";
+   }
 
   console.log("Tap:", row, col, cell);
 }
