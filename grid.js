@@ -1,4 +1,4 @@
-let mode = "select";
+let mode = "sample"; // default = tap = sample
 
 function setMode(m) {
   mode = m;
@@ -90,16 +90,25 @@ function handleTap(x,y,geo){
 
   let cell = gridState[row][col];
 
-  if(mode==="select") {
+  // 🔥 กดครั้งแรก = sample อัตโนมัติ
+  if(mode === "sample") {
     cell.selected = !cell.selected;
+
+    // ถ้าเลือก → เป็น sample
+    if(cell.selected){
+      cell.type = "sample";
+    }
   }
 
-  if(mode==="normal") {
-    cell.type="normal";
+  // 🔥 assign control
+  if(mode === "normal") {
+    cell.selected = true;
+    cell.type = "normal";
   }
 
-  if(mode==="deficient") {
-    cell.type="deficient";
+  if(mode === "deficient") {
+    cell.selected = true;
+    cell.type = "deficient";
   }
 
   console.log("Tap:", row, col, cell);
