@@ -35,13 +35,13 @@ async function startCamera() {
   }
 }
 
-function captureFrame() {
-  const canvas = document.createElement('canvas');
+function captureFrame(){
+  let canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  const ctx = canvas.getContext('2d');
+  let ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0);
 
-  return canvas;
+  return cv.imread(canvas);
 }
