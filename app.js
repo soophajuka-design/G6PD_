@@ -30,20 +30,13 @@ window.onload = () => {
   redrawOverlay();
 });
 };
-overlay.addEventListener('click', (e)=>{
 
-  if(!isCameraOn) return;
+function redrawOverlay(){
+  if(!overlay || !ctx) return;
 
-  const rect = overlay.getBoundingClientRect();
-
-  const x = (e.clientX - rect.left) * (overlay.width / rect.width);
-  const y = (e.clientY - rect.top) * (overlay.height / rect.height);
-
-  handleTap(x, y, geo);
-
-  // ✅ บังคับ redraw ทันที
-  redrawOverlay();
-});
+  ctx.clearRect(0,0,overlay.width, overlay.height);
+  geo = drawGrid(overlay, ctx);
+}
 
 function startLoop(){
 
