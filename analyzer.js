@@ -1,11 +1,18 @@
-// === AI HELPERS ===
+// =========================
+// SAFE AI HELPERS
+// =========================
 
 function computeIntensity(roi){
-  let gray = new cv.Mat();
-  cv.cvtColor(roi, gray, cv.COLOR_RGBA2GRAY);
-  let mean = cv.mean(gray)[0];
-  gray.delete();
-  return mean;
+  try{
+    let gray = new cv.Mat();
+    cv.cvtColor(roi, gray, cv.COLOR_RGBA2GRAY);
+    let mean = cv.mean(gray)[0];
+    gray.delete();
+    return mean;
+  }catch(e){
+    console.error("computeIntensity error:", e);
+    return 0;
+  }
 }
 
 function normalizeIntensity(value, min, max){
@@ -20,7 +27,9 @@ function classifyG6PD(norm){
 }
 
 
-// === MAIN ===
+// =========================
+// MAIN ANALYZE
+// =========================
 
 async function analyze(){
 
@@ -28,46 +37,65 @@ async function analyze(){
 
   try {
 
-    // ✅ OpenCV check
+    // 0. check dependencies
     if(typeof cv === "undefined"){
-      alert("OpenCV not loaded");
-      return;
+      throw new Error("OpenCV not loaded");
     }
 
-    // ✅ camera check
+    if(typeof captureFrame !== "function"){
+      throw new Error("captureFrame not found");
+    }
+
+    if(typeof detectPaperCorners !== "function"){
+      throw new Error("detectPaperCorners not found");
+    }
+
+    if(typeof warpPaper !== "function"){
+      throw new Error("warpPaper not found");
+    }
+
+    if(typeof getSelectedCells !== "function"){
+      throw new Error("getSelectedCells not found");
+    }
+
+    console.log("✅ Dependencies OK");
+
+    // 1. check video
     if(!video || video.videoWidth === 0){
-      alert("Camera not ready");
-      return;
+      throw new Error("Camera not ready");
     }
 
-    // 1. capture
-    const frame = captureFrame();
+    // 2. capture
+    let frame = captureFrame();
     if(!frame){
-      alert("Capture failed");
-      return;
+      throw new Error("captureFrame returned null");
     }
 
-    console.log("Frame OK");
+    console.log("📸 Frame captured");
 
-    // 2. detect
+    // 3. detect
     let corners = detectPaperCorners(frame);
-    if(!corners){
-      alert("Paper not detected");
-      return;
+
+    if(!corners || corners.length !== 4){
+      throw new Error("Paper not detected properly");
     }
 
-    console.log("Corners detected");
+    console.log("📐 Corners:", corners);
 
-    // 3. warp
+    // 4. warp
     let warped = warpPaper(frame, corners);
+
     if(!warped){
-      alert("Warp failed");
-      return;
+      throw new Error("warp failed");
     }
 
-    console.log("Warp OK");
+    console.log("🧭 Warp OK");
 
-    // 4. draw grid
+    // 5. draw grid
+    if(typeof drawWarpGrid !== "function"){
+      throw new Error("drawWarpGrid not found");
+    }
+
     let canvas = drawWarpGrid(warped);
 
     let old = document.getElementById("resultCanvas");
@@ -76,41 +104,59 @@ async function analyze(){
     canvas.id = "resultCanvas";
     document.body.appendChild(canvas);
 
-    // 5. ROI + intensity
+    console.log("🧱 Grid drawn");
+
+    // 6. get selected
     let selected = getSelectedCells();
 
-    if(selected.length === 0){
-      alert("No sample selected");
-      warped.delete();
-      return;
+    console.log("Selected:", selected);
+
+    if(!selected || selected.length === 0){
+      throw new Error("No sample selected");
     }
 
     let intensities = [];
 
+    // 7. ROI loop
     selected.forEach(cell=>{
-      let roi = extractROI(warped, cell);
 
-      let val = computeIntensity(roi);
+      try{
 
-      intensities.push({
-        ...cell,
-        intensity: val
-      });
+        let roi = extractROI(warped, cell);
 
-      roi.delete();
+        if(!roi){
+          console.warn("ROI null:", cell);
+          return;
+        }
+
+        let val = computeIntensity(roi);
+
+        intensities.push({
+          ...cell,
+          intensity: val
+        });
+
+        roi.delete();
+
+      }catch(e){
+        console.error("ROI error:", e, cell);
+      }
+
     });
 
-    // 6. find controls
+    console.log("📊 Intensities:", intensities);
+
+    // 8. find controls
     let normalCtrl = intensities.find(c=>c.type==="normal");
     let deficientCtrl = intensities.find(c=>c.type==="deficient");
 
     if(!normalCtrl || !deficientCtrl){
-      alert("ต้องกำหนด control normal และ deficient");
-      warped.delete();
-      return;
+      throw new Error("Control not set (normal + deficient required)");
     }
 
-    // 7. normalize + classify
+    console.log("🧪 Controls OK");
+
+    // 9. classify
     intensities.forEach(cell=>{
 
       let norm = normalizeIntensity(
@@ -122,7 +168,8 @@ async function analyze(){
       let result = classifyG6PD(norm);
 
       console.log(
-        "Cell:", cell.row, cell.col,
+        "✅ Cell:",
+        cell.row, cell.col,
         "Raw:", cell.intensity.toFixed(1),
         "Norm:", norm.toFixed(2),
         "Result:", result
@@ -131,15 +178,21 @@ async function analyze(){
 
     warped.delete();
 
-    console.log("✅ Analyze complete");
+    console.log("🎉 Analyze COMPLETE");
 
   } catch(err) {
 
-    console.error("❌ Analyze error:", err);
-    alert("Error: " + err.message);
+    console.error("❌ ANALYZE FAILED:", err);
 
+    alert(
+      "Error: " + err.message +
+      "\nCheck console for detail"
+    );
   }
 }
 
-// 🔥 สำคัญ
+
+// =========================
+// FORCE GLOBAL (สำคัญ)
+// =========================
 window.analyze = analyze;
