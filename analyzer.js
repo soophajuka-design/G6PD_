@@ -53,13 +53,21 @@ function detectPaperCorners(src){
     }
 
     // extract 4 points
-    let corners = [];
+ // 🔥 FIX: fallback ถ้า detectPaperCorners ไม่มี
+let corners;
 
-    for(let i=0; i<4; i++){
-      let x = approx.intPtr(i,0)[0];
-      let y = approx.intPtr(i,0)[1];
-      corners.push({x,y});
-    }
+if(typeof detectPaperCorners === "function"){
+  corners = detectPaperCorners(frame);
+} else {
+  console.warn("⚠️ detectPaperCorners not found → use full frame");
+
+  corners = [
+    {x:0, y:0},
+    {x:frame.cols, y:0},
+    {x:frame.cols, y:frame.rows},
+    {x:0, y:frame.rows}
+  ];
+}
 
     approx.delete();
 
