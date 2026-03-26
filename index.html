@@ -13,35 +13,6 @@ body {
   text-align:center;
 }
 
-/* === LEGEND === */
-#legend {
-  position:absolute;
-  top:10px;
-  left:10px;
-  background:rgba(0,0,0,0.6);
-  padding:8px 10px;
-  border-radius:8px;
-  font-size:12px;
-  text-align:left;
-  z-index:3;
-}
-
-/* dot style */
-.dot {
-  display:inline-block;
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  margin-right:6px;
-}
-
-/* colors */
-.normal { background:#22c55e; }
-.deficient { background:#ef4444; }
-.selected { background:#facc15; }
-.grid { background:#ffffff; border:1px solid #ccc; }
-
-
 h3 {
   margin:10px;
 }
@@ -69,6 +40,33 @@ canvas {
   z-index:2;
 }
 
+/* === LEGEND === */
+#legend {
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:rgba(0,0,0,0.6);
+  padding:8px 10px;
+  border-radius:8px;
+  font-size:12px;
+  text-align:left;
+  z-index:3;
+}
+
+.dot {
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  margin-right:6px;
+}
+
+/* dot colors (แยกจากปุ่ม) */
+.dot.normal { background:#22c55e; }
+.dot.deficient { background:#ef4444; }
+.dot.selected { background:#facc15; }
+.dot.grid { background:#ffffff; border:1px solid #ccc; }
+
 /* === CONTROL PANEL === */
 #controls {
   position:fixed;
@@ -83,7 +81,6 @@ canvas {
   box-shadow:0 -2px 10px rgba(0,0,0,0.6);
 }
 
-/* === BUTTON STYLE === */
 button {
   padding:10px 14px;
   border:none;
@@ -92,9 +89,8 @@ button {
   color:white;
 }
 
-/* สี */
+/* ปุ่ม */
 .start { background:#2563eb; }
-.select { background:#10b981; }
 .normal { background:#22c55e; }
 .deficient { background:#ef4444; }
 .analyze { background:#f59e0b; }
@@ -114,7 +110,7 @@ button:active {
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
 
-  <!-- LEGEND -->  
+  <!-- LEGEND -->
   <div id="legend">
     <div><span class="dot normal"></span> Normal</div>
     <div><span class="dot deficient"></span> Deficient</div>
@@ -122,7 +118,6 @@ button:active {
     <div><span class="dot grid"></span> Grid</div>
   </div>
 </div>
-
 
 <!-- CONTROL BAR -->
 <div id="controls">
@@ -132,11 +127,14 @@ button:active {
   <button class="analyze" onclick="analyze()">Analyze</button>
   <button class="reset" onclick="resetApp()">Reset</button>
 </div>
-<script async src="https://docs.opencv.org/4.5.5/opencv.js"></script>
-<script src="camera.js"></script>
-<script src="grid.js"></script>
-<script src="analyzer.js"></script>
-<script src="app.js"></script>
+
+<!-- ✅ สำคัญ: ใช้ defer ทั้งหมด -->
+<script defer src="https://docs.opencv.org/4.5.5/opencv.js"></script>
+
+<script defer src="camera.js"></script>
+<script defer src="grid.js"></script>
+<script defer src="analyzer.js"></script>
+<script defer src="app.js"></script>
 
 </body>
 </html>
