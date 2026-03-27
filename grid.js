@@ -1,4 +1,3 @@
-
 let gridState = [];
 let mode = "sample";
 
@@ -17,11 +16,18 @@ function drawGrid(canvas, ctx){
 
   const rows=5, cols=4;
 
-  const w = canvas.width;
-  const h = canvas.height;
+  const W = canvas.width;
+  const H = canvas.height;
 
-  const cellW = w/cols;
-  const cellH = h/rows;
+  // 🔥 GRID เล็กกว่า live view (80%)
+  const gridW = W * 0.8;
+  const gridH = H * 0.8;
+
+  const offsetX = (W - gridW)/2;
+  const offsetY = (H - gridH)/2;
+
+  const cellW = gridW/cols;
+  const cellH = gridH/rows;
 
   let geo=[];
 
@@ -31,17 +37,17 @@ function drawGrid(canvas, ctx){
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
-      let x=c*cellW;
-      let y=r*cellH;
+      let x = offsetX + c*cellW;
+      let y = offsetY + r*cellH;
 
       ctx.strokeRect(x,y,cellW,cellH);
 
-      let state=gridState[r][c];
+      let s = gridState[r][c];
 
-      if(state.selected){
+      if(s.selected){
         ctx.fillStyle =
-          state.type==="normal"?"green":
-          state.type==="deficient"?"red":"yellow";
+          s.type==="normal"?"green":
+          s.type==="deficient"?"red":"yellow";
 
         ctx.beginPath();
         ctx.arc(x+cellW/2,y+cellH/2,10,0,Math.PI*2);
@@ -61,9 +67,13 @@ function handleTap(x,y,geo){
     if(x>cell.x && x<cell.x+cell.w &&
        y>cell.y && y<cell.y+cell.h){
 
-      let s=gridState[cell.row][cell.col];
-      s.selected=true;
-      s.type=mode;
+      let s = gridState[cell.row][cell.col];
+
+      s.selected = true;
+      s.type = mode;
+
+      // 🔥 ใช้ครั้งเดียว → กลับ sample
+      mode = "sample";
     }
   });
 }
