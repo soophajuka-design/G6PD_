@@ -1,46 +1,39 @@
 let video;
 
-function initCameraElement() {
+function initCameraElement(){
   video = document.getElementById('video');
 }
 
-async function startCamera() {
-  try {
-    let constraints = {
+async function startCamera(){
+
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: "environment"
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1280 },
+        height: { ideal: 1920 }
       },
-      audio: false
-    };
-
-    let stream;
-
-    try {
-      // iOS บางเครื่องต้องไม่ใช้ exact
-      stream = await navigator.mediaDevices.getUserMedia(constraints);
-    } catch (e) {
-      // fallback
-      stream = await navigator.mediaDevices.getUserMedia({ video: true });
-    }
+      audio:false
+    });
 
     video.srcObject = stream;
-
     await video.play();
 
-    console.log("Camera started");
+    console.log("✅ Camera started");
 
-  } catch (err) {
+  }catch(err){
     alert("Camera error: " + err.message);
     console.error(err);
   }
 }
 
 function captureFrame(){
-  let canvas = document.createElement('canvas');
+
+  const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
 
-  let ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d');
   ctx.drawImage(video, 0, 0);
 
   return cv.imread(canvas);
