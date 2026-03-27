@@ -28,8 +28,6 @@ window.onload = ()=>{
     const y = (e.clientY - rect.top) * (overlay.height / rect.height);
 
     handleTap(x,y,geo);
-
-    // 🔥 FIX: redraw ทันที
     redraw();
   });
 };
@@ -45,8 +43,10 @@ function startLoop(){
 
     if(video.videoWidth > 0){
 
-      overlay.width = video.videoWidth;
-      overlay.height = video.videoHeight;
+      const rect = overlay.getBoundingClientRect();
+
+      overlay.width = rect.width;
+      overlay.height = rect.height;
 
       redraw();
     }
