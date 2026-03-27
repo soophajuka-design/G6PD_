@@ -1,70 +1,13 @@
-// === WARP SIZE (standard paper) ===
-const WARP_W = 710;   // 7.1 cm * 100
-const WARP_H = 1280;  // 12.8 cm * 100
+const WARP_W = 710;
+const WARP_H = 1280;
 
-// === existing code ===
-let mode = "sample";
+// 🔥 default = select
+let mode = "select";
 
-function setMode(m) {
+function setMode(m){
   mode = m;
 }
-function getWarpGrid() {
 
-  const cols = 4;
-  const rows = 5;
-
-  const cw = WARP_W / cols;
-  const ch = WARP_H / rows;
-
-  let cells = [];
-
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-
-      cells.push({
-        row:r,
-        col:c,
-        x: c*cw,
-        y: r*ch,
-        w: cw,
-        h: ch
-      });
-    }
-  }
-
-  return cells;
-}
-
-function drawWarpGrid(mat){
-
-  const canvas = document.createElement('canvas');
-  canvas.width = WARP_W;
-  canvas.height = WARP_H;
-
-  cv.imshow(canvas, mat);
-
-  const ctx = canvas.getContext('2d');
-
-  const cells = getWarpGrid();
-
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-
-  cells.forEach(cell=>{
-    ctx.strokeRect(cell.x, cell.y, cell.w, cell.h);
-
-    ctx.beginPath();
-    ctx.arc(
-      cell.x + cell.w/2,
-      cell.y + cell.h/2,
-      Math.min(cell.w,cell.h)*0.3,
-      0, 2*Math.PI
-    );
-    ctx.stroke();
-  });
-
-  return canvas;
-}
 let gridState = Array.from({length:5}, () =>
   Array.from({length:4}, () => ({
     selected:false,
@@ -72,26 +15,20 @@ let gridState = Array.from({length:5}, () =>
   }))
 );
 
-
-function drawGrid(canvas, ctx) {
+function drawGrid(canvas, ctx){
 
   const w = canvas.width;
   const h = canvas.height;
 
   ctx.clearRect(0,0,w,h);
 
-  const margin = 0.1;
-
-  const usableW = w*(1-margin*2);
-  const usableH = h*(1-margin*2);
-
   const ratio = 7.1/12.8;
 
-  let pw = usableW;
+  let pw = w;
   let ph = pw/ratio;
 
-  if (ph > usableH) {
-    ph = usableH;
+  if(ph > h){
+    ph = h;
     pw = ph*ratio;
   }
 
@@ -102,9 +39,6 @@ function drawGrid(canvas, ctx) {
   const cw = pw/cols;
   const ch = ph/rows;
 
-  ctx.lineWidth = 2;
-
-  // ===== draw cells =====
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
@@ -113,27 +47,17 @@ function drawGrid(canvas, ctx) {
 
       let cell = gridState[r][c];
 
-      // ===== สีตามสถานะ =====
-      if(cell.type==="normal") {
-        ctx.strokeStyle="#22c55e"; // เขียว
-      }
-      else if(cell.type==="deficient") {
-        ctx.strokeStyle="#ef4444"; // แดง
-      }
-      else if(cell.selected) {
-        ctx.strokeStyle="#facc15"; // เหลือง
-      }
-      else {
-        ctx.strokeStyle="#ffffff"; // ขาว (grid default)
-      }
-      ctx.shadowColor = "rgba(255,255,255,0.4)";
-      ctx.shadowBlur = 4;
+      if(cell.type==="normal") ctx.strokeStyle="#22c55e";
+      else if(cell.type==="deficient") ctx.strokeStyle="#ef4444";
+      else if(cell.selected) ctx.strokeStyle="#facc15";
+      else ctx.strokeStyle="#ffffff";
+
+      ctx.lineWidth=2;
       ctx.strokeRect(x,y,cw,ch);
 
-      // ===== วงกลม (สีขาวจาง) =====
       ctx.beginPath();
-      ctx.strokeStyle="rgba(255,255,255,0.6)";
-      ctx.arc(x+cw/2, y+ch/2, Math.min(cw,ch)*0.3, 0, 2*Math.PI);
+      ctx.strokeStyle="rgba(255,255,255,0.5)";
+      ctx.arc(x+cw/2,y+ch/2,Math.min(cw,ch)*0.3,0,2*Math.PI);
       ctx.stroke();
     }
   }
@@ -150,17 +74,17 @@ function handleTap(x,y,geo){
 
   let cell = gridState[row][col];
 
-  if(mode==="select") {
+  if(mode==="select"){
     cell.selected = !cell.selected;
   }
 
-  if(mode==="normal") {
+  if(mode==="normal"){
     cell.type="normal";
+    mode="select"; // 🔥 กลับ default
   }
 
-  if(mode==="deficient") {
+  if(mode==="deficient"){
     cell.type="deficient";
+    mode="select"; // 🔥 กลับ default
   }
-
-  console.log("Tap:", row, col, cell);
 }
