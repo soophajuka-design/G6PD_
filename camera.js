@@ -8,30 +8,23 @@ async function startCamera(){
 
   try{
 
-    // 🔥 iOS ต้องใช้ exact ก่อน
-    let stream;
+    // 🔥 FIX iOS: ต้องเรียกจาก user gesture + ใช้ constraints แบบนี้
+    const constraints = {
+      audio:false,
+      video:{
+        facingMode: "environment",   // fallback universal
+        width: { ideal: 1280 },
+        height:{ ideal: 720 }
+      }
+    };
 
-    try{
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:{
-          facingMode:{ exact:"environment" }
-        },
-        audio:false
-      });
-    }catch(e){
-      // fallback Android / browser
-      stream = await navigator.mediaDevices.getUserMedia({
-        video:{
-          facingMode:"environment"
-        },
-        audio:false
-      });
-    }
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
     video.srcObject = stream;
+
     await video.play();
 
-    console.log("✅ Rear camera active");
+    console.log("✅ Camera started (rear preferred)");
 
   }catch(err){
     alert("Camera error: " + err.message);
