@@ -23,3 +23,4 @@ function analyze(){
 }
 
 window.analyze = analyze;
+window.gridState[r][c]
