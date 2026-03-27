@@ -1,34 +1,22 @@
 function analyze(){
 
-  console.log("🔥 analyze called");
+  console.log("Analyze OK");
 
-  if(typeof cv === "undefined"){
-    alert("OpenCV not ready");
-    return;
-  }
+  let selected=[];
 
-  const selected = getSelectedCells();
-
-  if(selected.length === 0){
-    alert("No sample selected");
-    return;
-  }
-
-  console.log("Selected:", selected);
-}
-
-function getSelectedCells(){
-
-  let cells = [];
   gridState.forEach((row,r)=>{
     row.forEach((cell,c)=>{
       if(cell.selected){
-        cells.push({row:r,col:c,type:cell.type});
+        selected.push({row:r,col:c,type:cell.type});
       }
     });
   });
 
-  return cells;
+  console.log(selected);
+
+  if(selected.length===0){
+    alert("No sample selected");
+  }
 }
 
-window.analyze = analyze;
+window.analyze=analyze;
