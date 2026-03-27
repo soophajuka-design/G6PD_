@@ -6,20 +6,15 @@ function initCameraElement(){
 
 async function startCamera(){
 
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video:true,
-      audio:false
-    });
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video:true,
+    audio:false
+  });
 
-    video.srcObject = stream;
-    await video.play();
+  video.srcObject = stream;
+  await video.play();
 
-    console.log("Camera OK");
-
-  }catch(err){
-    alert(err.message);
-  }
+  console.log("Camera started");
 }
 
 function captureFrame(){
