@@ -1,35 +1,36 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>G6PD Analyzer</title>
 
 <style>
 body {
   margin:0;
-  background:#0b0f14;
+  background:black;
   color:white;
-  font-family:system-ui;
   text-align:center;
+  font-family:system-ui;
 }
 
-/* === CONTAINER (LOCK RATIO) === */
+/* container เต็มจอ */
 #container {
   position:relative;
   width:100vw;
-  height:100vh;   /* 🔥 เต็มจอ */
-  margin:0;
+  height:80vh;
+  margin:auto;
   background:black;
-  overflow:hidden;
 }
 
+/* video ไม่ crop */
 video {
   position:absolute;
   width:100%;
   height:100%;
-  object-fit:cover; /* 🔥 เต็มจอ */
+  object-fit:contain;
 }
 
+/* overlay */
 canvas {
   position:absolute;
   top:0;
@@ -38,46 +39,31 @@ canvas {
   height:100%;
 }
 
-/* === OVERLAY === */
-canvas {
-  position:absolute;
-  width:100%;
-  height:100%;
-  top:0;
-  left:0;
-}
-
-/* === CONTROLS === */
+/* controls */
 #controls {
-  position:fixed;
-  bottom:0;
-  width:100%;
-  background:#111827;
-  padding:10px;
-  display:flex;
-  gap:8px;
-  justify-content:center;
+  margin-top:10px;
 }
 
 button {
   padding:10px;
+  margin:4px;
   border:none;
-  border-radius:8px;
+  border-radius:6px;
   color:white;
 }
 
-.start { background:#2563eb; }
-.normal { background:#22c55e; }
-.deficient { background:#ef4444; }
-.analyze { background:#f59e0b; }
-.reset { background:#6b7280; }
+.start { background:blue; }
+.normal { background:green; }
+.deficient { background:red; }
+.analyze { background:orange; }
+.reset { background:gray; }
 
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer</h3>
+<h3>G6PD Analyzer (Baseline)</h3>
 
 <div id="container">
   <video id="video" autoplay playsinline muted></video>
