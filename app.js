@@ -2,15 +2,7 @@ let overlay, ctx, geo;
 let isCameraOn = false;
 let animationId = null;
 
-window.onload = () => {
 
-  initCameraElement();
-
-  document.getElementById('startBtn').onclick = async () => {
-    await startCamera();
-  };
-
-};
 
 function startLoop(){
 
