@@ -5,12 +5,6 @@
 <title>G6PD Analyzer</title>
 
 <style>
-  <script>
-if(!navigator.mediaDevices){
-  alert("Camera API not supported");
-}
-</script>
-  
 body {
   margin:0;
   background:#0b0f14;
@@ -21,68 +15,36 @@ body {
 
 h3 { margin:10px; }
 
-/* 🔥 LOCK RATIO */
+/* ✅ lock ratio */
 #container {
   position:relative;
   width:100%;
   max-width:500px;
   margin:auto;
-
   aspect-ratio: 10.65 / 19.2;
-
   border-radius:12px;
   overflow:hidden;
   background:black;
 }
 
-/* 🔥 FIX iPhone VIDEO */
+/* ✅ video fix iPhone */
 video {
   position:absolute;
   top:50%;
   left:50%;
-
-  width:auto;
   height:100%;
-
   transform:translate(-50%,-50%);
-
-  object-fit:contain; /* 🔥 สำคัญ: ไม่ crop */
 }
 
 /* overlay */
 canvas {
   position:absolute;
-  top:0;
-  left:0;
   width:100%;
   height:100%;
+  top:0;
+  left:0;
   z-index:2;
 }
-
-/* legend */
-#legend {
-  position:absolute;
-  top:10px;
-  left:10px;
-  background:rgba(0,0,0,0.6);
-  padding:8px;
-  border-radius:8px;
-  font-size:12px;
-  z-index:3;
-}
-
-.dot {
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  display:inline-block;
-  margin-right:6px;
-}
-
-.dot.normal { background:#22c55e; }
-.dot.deficient { background:#ef4444; }
-.dot.selected { background:#facc15; }
-.dot.grid { background:#fff; }
 
 /* controls */
 #controls {
@@ -94,8 +56,6 @@ canvas {
   display:flex;
   justify-content:center;
   gap:8px;
-
-  padding-bottom: calc(10px + env(safe-area-inset-bottom));
 }
 
 button {
@@ -121,23 +81,17 @@ button {
 <div id="container">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
-
-  <div id="legend">
-    <div><span class="dot normal"></span> Normal</div>
-    <div><span class="dot deficient"></span> Deficient</div>
-    <div><span class="dot selected"></span> Selected</div>
-  </div>
 </div>
 
 <div id="controls">
+  <!-- 🔥 FIX: inline onclick -->
   <button class="start" onclick="startCameraDirect()">Start</button>
-  <button onclick="setMode('normal')" class="normal">Normal</button>
-  <button onclick="setMode('deficient')" class="deficient">Deficient</button>
-  <button onclick="analyze()" class="analyze">Analyze</button>
-  <button onclick="resetApp()" class="reset">Reset</button>
+  <button class="normal" onclick="setMode('normal')">Normal</button>
+  <button class="deficient" onclick="setMode('deficient')">Deficient</button>
+  <button class="analyze" onclick="analyze()">Analyze</button>
+  <button class="reset" onclick="resetApp()">Reset</button>
 </div>
 
-<script src="https://docs.opencv.org/4.5.5/opencv.js"></script>
 <script src="camera.js"></script>
 <script src="grid.js"></script>
 <script src="analyzer.js"></script>
