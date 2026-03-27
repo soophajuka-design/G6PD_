@@ -13,35 +13,68 @@ body {
   text-align:center;
 }
 
+/* === LIVE VIEW เต็มพื้นที่ === */
 #container {
   position:relative;
   width:100%;
-  max-width:500px;
+  height:80vh;
   margin:auto;
   background:black;
+  overflow:hidden;
 }
 
 video, canvas {
-  width:100%;
-  display:block;
-}
-
-canvas {
   position:absolute;
+  width:100%;
+  height:100%;
   top:0;
   left:0;
 }
 
+/* === LEGEND (ล่างซ้าย นอก grid) === */
+#legend {
+  position:absolute;
+  bottom:80px;
+  left:10px;
+  background:rgba(0,0,0,0.6);
+  padding:6px 10px;
+  border-radius:8px;
+  font-size:12px;
+  z-index:3;
+}
+
+.dot {
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  margin-right:6px;
+}
+
+.normal-dot { background:#22c55e; }
+.def-dot { background:#ef4444; }
+.sel-dot { background:#facc15; }
+
+/* === FLOAT CONTROL BAR === */
 #controls {
-  margin-top:10px;
+  position:absolute;
+  bottom:10px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:8px;
+  background:rgba(0,0,0,0.6);
+  padding:8px 10px;
+  border-radius:12px;
+  z-index:4;
 }
 
 button {
-  padding:10px;
-  margin:5px;
+  padding:8px 12px;
   border:none;
-  border-radius:6px;
+  border-radius:8px;
   color:white;
+  font-size:13px;
 }
 
 .start { background:#2563eb; }
@@ -60,14 +93,20 @@ button {
 <div id="container">
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
-</div>
 
-<div id="controls">
-  <button id="startBtn" class="start">Start</button>
-  <button onclick="setMode('normal')" class="normal">Normal</button>
-  <button onclick="setMode('deficient')" class="deficient">Deficient</button>
-  <button id="analyzeBtn" class="analyze">Analyze</button>
-  <button onclick="resetApp()" class="reset">Reset</button>
+  <div id="legend">
+    <div><span class="dot normal-dot"></span> Normal</div>
+    <div><span class="dot def-dot"></span> Deficient</div>
+    <div><span class="dot sel-dot"></span> Sample</div>
+  </div>
+
+  <div id="controls">
+    <button id="startBtn" class="start">Start</button>
+    <button onclick="setMode('normal')" class="normal">Normal</button>
+    <button onclick="setMode('deficient')" class="deficient">Deficient</button>
+    <button id="analyzeBtn" class="analyze">Analyze</button>
+    <button onclick="resetApp()" class="reset">Reset</button>
+  </div>
 </div>
 
 <script src="https://docs.opencv.org/4.5.5/opencv.js"></script>
