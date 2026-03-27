@@ -1,1 +1,154 @@
-<!DOCTYPE html> <html> <head> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>G6PD Analyzer</title> <style> body { margin:0; background:#0b0f14; color:white; font-family:system-ui; text-align:center; } h3 { margin:10px; } /* === CAMERA AREA === */ #container { position:relative; width:100%; max-width:500px; margin:auto; border-radius:12px; overflow:hidden; background:black; } video, canvas { width:100%; display:block; } canvas { position:absolute; top:0; left:0; z-index:2; } /* === LEGEND === */ #legend { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.6); padding:8px 10px; border-radius:8px; font-size:12px; text-align:left; z-index:3; } .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; } /* dot colors (แยกจากปุ่ม) */ .dot.normal { background:#22c55e; } .dot.deficient { background:#ef4444; } .dot.selected { background:#facc15; } .dot.grid { background:#ffffff; border:1px solid #ccc; } /* === CONTROL PANEL === */ #controls { position:fixed; bottom:0; width:100%; background:#111827; padding:10px; display:flex; flex-wrap:wrap; justify-content:center; gap:8px; box-shadow:0 -2px 10px rgba(0,0,0,0.6); } button { padding:10px 14px; border:none; border-radius:8px; font-size:14px; color:white; } /* ปุ่ม */ .start { background:#2563eb; } .normal { background:#22c55e; } .deficient { background:#ef4444; } .analyze { background:#f59e0b; } .reset { background:#6b7280; } button:active { transform:scale(0.95); } </style> </head> <body> <h3>G6PD Analyzer</h3> <div id="container"> <video id="video" autoplay playsinline muted></video> <canvas id="overlay"></canvas> <!-- LEGEND --> <div id="legend"> <div><span class="dot normal"></span> Normal</div> <div><span class="dot deficient"></span> Deficient</div> <div><span class="dot selected"></span> Selected</div> <div><span class="dot grid"></span> Grid</div> </div> </div> <!-- CONTROL BAR --> <div id="controls"> <button class="start" id="startBtn">Start</button> <button class="normal" onclick="setMode('normal')">Normal</button> <button class="deficient" onclick="setMode('deficient')">Deficient</button> <button class="analyze" onclick="analyze()">Analyze</button> <button class="reset" onclick="resetApp()">Reset</button> </div> <!-- ✅ สำคัญ: ใช้ defer ทั้งหมด --> <script defer src="https://docs.opencv.org/4.5.5/opencv.js"></script> <script defer src="camera.js"></script> <script defer src="grid.js"></script> <script defer src="analyzer.js"></script> <script defer src="app.js"></script> </body> </html> 
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>G6PD Analyzer</title>
+
+<style>
+body {
+  margin:0;
+  background:#0b0f14;
+  color:white;
+  font-family:system-ui;
+  text-align:center;
+}
+
+h3 {
+  margin:10px;
+}
+
+/* === CAMERA AREA === */
+#container {
+  position:relative;
+
+  width:100%;
+  max-width:500px;
+
+  /* 🔥 FIX: lock ratio 10.65 : 19.2 */
+  aspect-ratio: 10.65 / 19.2;
+
+  margin:auto;
+  border-radius:12px;
+  overflow:hidden;
+  background:black;
+}
+
+/* 🔥 video fill container */
+video {
+  position:absolute;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+/* 🔥 overlay match display */
+canvas {
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  z-index:2;
+}
+
+/* === LEGEND === */
+#legend {
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:rgba(0,0,0,0.6);
+  padding:8px 10px;
+  border-radius:8px;
+  font-size:12px;
+  text-align:left;
+  z-index:3;
+}
+
+.dot {
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  margin-right:6px;
+}
+
+.dot.normal { background:#22c55e; }
+.dot.deficient { background:#ef4444; }
+.dot.selected { background:#facc15; }
+.dot.grid { background:#ffffff; border:1px solid #ccc; }
+
+/* === CONTROL PANEL === */
+#controls {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#111827;
+  padding:10px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:8px;
+  box-shadow:0 -2px 10px rgba(0,0,0,0.6);
+
+  /* 🔥 safe area iPhone */
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+
+button {
+  padding:10px 14px;
+  border:none;
+  border-radius:8px;
+  font-size:14px;
+  color:white;
+}
+
+/* colors */
+.start { background:#2563eb; }
+.normal { background:#22c55e; }
+.deficient { background:#ef4444; }
+.analyze { background:#f59e0b; }
+.reset { background:#6b7280; }
+
+button:active {
+  transform:scale(0.95);
+}
+</style>
+</head>
+
+<body>
+
+<h3>G6PD Analyzer</h3>
+
+<div id="container">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+
+  <!-- LEGEND -->
+  <div id="legend">
+    <div><span class="dot normal"></span> Normal</div>
+    <div><span class="dot deficient"></span> Deficient</div>
+    <div><span class="dot selected"></span> Selected</div>
+    <div><span class="dot grid"></span> Grid</div>
+  </div>
+</div>
+
+<!-- CONTROL BAR -->
+<div id="controls">
+  <button class="start" id="startBtn">Start</button>
+  <button class="normal" onclick="setMode('normal')">Normal</button>
+  <button class="deficient" onclick="setMode('deficient')">Deficient</button>
+  <button class="analyze" onclick="analyze()">Analyze</button>
+  <button class="reset" onclick="resetApp()">Reset</button>
+</div>
+
+<!-- OpenCV -->
+<script src="https://docs.opencv.org/4.5.5/opencv.js"></script>
+
+<!-- App scripts -->
+<script src="camera.js"></script>
+<script src="grid.js"></script>
+<script src="analyzer.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
