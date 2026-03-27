@@ -1,5 +1,4 @@
-let overlay, ctx;
-let geo;
+let overlay, ctx, geo;
 let isCameraOn = false;
 let needRedraw = true;
 
@@ -10,15 +9,17 @@ window.onload = () => {
   overlay = document.getElementById('overlay');
   ctx = overlay.getContext('2d');
 
-  // START CAMERA
-  document.getElementById('startBtn').onclick = async () => {
+  document.getElementById('startBtn').onclick = async ()=>{
     await startCamera();
     isCameraOn = true;
     startLoop();
   };
 
-  // TAP SELECT
-  overlay.addEventListener('click', (e)=>{
+  document.getElementById("analyzeBtn").onclick = ()=>{
+    analyze();
+  };
+
+  overlay.addEventListener('click', e=>{
 
     if(!isCameraOn) return;
 
@@ -27,28 +28,10 @@ window.onload = () => {
     const x = (e.clientX - rect.left) * (overlay.width / rect.width);
     const y = (e.clientY - rect.top) * (overlay.height / rect.height);
 
-    handleTap(x, y, geo);
+    handleTap(x,y,geo);
 
     needRedraw = true;
   });
-
-  // 🔥 FIX: bind analyze button
-  const analyzeBtn = document.getElementById("analyzeBtn");
-
-  if(analyzeBtn){
-    analyzeBtn.onclick = ()=>{
-
-      if(typeof analyze !== "function"){
-        alert("analyze() not loaded");
-        console.error("analyze not found");
-        return;
-      }
-
-      console.log("✅ Analyze clicked");
-
-      analyze();
-    };
-  }
 };
 
 function startLoop(){
@@ -57,18 +40,14 @@ function startLoop(){
 
     if(video.videoWidth > 0){
 
-      if(overlay.width !== video.videoWidth ||
-         overlay.height !== video.videoHeight){
+      const rect = overlay.getBoundingClientRect();
 
-        overlay.width = video.videoWidth;
-        overlay.height = video.videoHeight;
-
-        needRedraw = true;
-      }
+      overlay.width = rect.width;
+      overlay.height = rect.height;
 
       if(needRedraw){
-        ctx.clearRect(0,0,overlay.width, overlay.height);
-        geo = drawGrid(overlay, ctx);
+        ctx.clearRect(0,0,overlay.width,overlay.height);
+        geo = drawGrid(overlay,ctx);
         needRedraw = false;
       }
     }
@@ -79,30 +58,13 @@ function startLoop(){
   loop();
 }
 
-function resetApp() {
+function resetApp(){
 
   for(let r=0;r<5;r++){
     for(let c=0;c<4;c++){
-      gridState[r][c] = {
-        selected:false,
-        type:"sample"
-      };
+      gridState[r][c] = {selected:false,type:"sample"};
     }
   }
 
   needRedraw = true;
-
-  console.log("Reset complete");
-}
-
-function drawCorners(ctx, corners){
-  if(!corners) return;
-
-  ctx.fillStyle = "red";
-
-  corners.forEach(p=>{
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
-    ctx.fill();
-  });
 }
