@@ -21,15 +21,16 @@ function drawGrid(canvas, ctx){
   const usableW = w*(1-margin*2);
   const usableH = h*(1-margin*2);
 
-  const ratio = 7.1/12.8;
+ // 🔥 FIX RATIO (height / width)
+const ratio = 12.8 / 7.1;
 
-  let pw = usableW;
-  let ph = pw/ratio;
+let pw = usableW;
+let ph = pw * ratio;
 
-  if(ph > usableH){
-    ph = usableH;
-    pw = ph*ratio;
-  }
+if (ph > usableH) {
+  ph = usableH;
+  pw = ph / ratio;
+}}
 
   const sx = (w-pw)/2;
   const sy = (h-ph)/2;
