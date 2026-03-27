@@ -1,46 +1,44 @@
 function drawGrid(canvas, ctx){
 
-  const W = canvas.width;
-  const H = canvas.height;
+  const w = canvas.width;
+  const h = canvas.height;
 
-  ctx.clearRect(0,0,W,H);
+  ctx.clearRect(0,0,w,h);
 
-  // ===== REAL PAPER RATIO =====
-  const paperW = 7.1;
-  const paperH = 12.8;
+  const margin = 0.1;
 
-  const paperRatio = paperW / paperH; // 🔥 สำคัญ
+  const usableW = w*(1-margin*2);
+  const usableH = h*(1-margin*2);
 
-  // ===== FIT INSIDE SCREEN =====
-  let drawW = W;
-  let drawH = drawW / paperRatio;
+  const ratio = 7.1 / 12.8;
 
-  if(drawH > H){
-    drawH = H;
-    drawW = drawH * paperRatio;
+  let pw = usableW;
+  let ph = pw / ratio;
+
+  if (ph > usableH) {
+    ph = usableH;
+    pw = ph * ratio;
   }
 
-  // ===== CENTER =====
-  const sx = (W - drawW) / 2;
-  const sy = (H - drawH) / 2;
+  // ✅ center แนวนอน (สมมาตร)
+  const sx = (w - pw)/2;
 
-  // ===== GRID =====
-  const cols = 4;
-  const rows = 5;
+  // 🔥 เลื่อนขึ้น (bias ขึ้นด้านบน)
+  const topBias = 0.35; 
+  const sy = (h - ph) * topBias;
 
-  const cw = drawW / cols;
-  const ch = drawH / rows;
+  const cols=4, rows=5;
+  const cw = pw/cols;
+  const ch = ph/rows;
 
-  // ===== DRAW =====
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
-      const x = sx + c*cw;
-      const y = sy + r*ch;
+      let x = sx + c*cw;
+      let y = sy + r*ch;
 
       let cell = gridState[r][c];
 
-      // COLOR
       if(cell.type==="normal") ctx.strokeStyle="#22c55e";
       else if(cell.type==="deficient") ctx.strokeStyle="#ef4444";
       else if(cell.selected) ctx.strokeStyle="#facc15";
@@ -49,9 +47,8 @@ function drawGrid(canvas, ctx){
       ctx.lineWidth = 2;
       ctx.strokeRect(x,y,cw,ch);
 
-      // CIRCLE
       ctx.beginPath();
-      ctx.strokeStyle="rgba(255,255,255,0.6)";
+      ctx.strokeStyle="rgba(255,255,255,0.5)";
       ctx.arc(
         x + cw/2,
         y + ch/2,
@@ -63,6 +60,5 @@ function drawGrid(canvas, ctx){
     }
   }
 
-  // 🔥 return geometry (สำคัญกับ tap)
-  return {sx, sy, cw, ch};
+  return {sx,sy,cw,ch};
 }
