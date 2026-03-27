@@ -10,11 +10,10 @@ window.onload = () => {
   ctx = overlay.getContext("2d");
 
   // ===== START BUTTON =====
-document.getElementById('startBtn').addEventListener('click', () => {
-
-  startCameraDirect(); // 🔥 เรียกทันที
-});
-
+  document.getElementById('startBtn').onclick = () => {
+  startCameraDirect(); // 🔥 เรียกตรงๆ
+};
+  
   // ===== TAP =====
   overlay.addEventListener("click", (e)=>{
 
