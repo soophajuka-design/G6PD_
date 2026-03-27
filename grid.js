@@ -1,8 +1,12 @@
-let mode = "select";
+// === WARP SIZE (standard paper) ===
+const WARP_W = 710;   // 7.1 cm * 100
+const WARP_H = 1280;  // 12.8 cm * 100
+
+// === existing code ===
+let mode = "sample";
 
 function setMode(m) {
   mode = m;
-  console.log("Mode:", m);
 }
 
 let gridState = Array.from({length:5}, () =>
