@@ -1,74 +1,98 @@
 let overlay, ctx, geo;
-let isCameraOn=false;
-let needRedraw=true;
+let isCameraOn = false;
+let animationId = null;
 
-window.onload=()=>{
+window.onload = () => {
 
   initCameraElement();
 
-  overlay=document.getElementById("overlay");
-  ctx=overlay.getContext("2d");
+  overlay = document.getElementById("overlay");
+  ctx = overlay.getContext("2d");
 
-  document.getElementById("startBtn").onclick=async()=>{
+  // ===== START BUTTON =====
+  document.getElementById("startBtn").onclick = async () => {
+
+    // 🔥 stop loop เก่า
+    if(animationId){
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
 
     await startCamera();
 
-    isCameraOn=true;
-    needRedraw=true;
+    isCameraOn = true;
+
+    // 🔥 reset state
+    resetApp();
 
     startLoop();
   };
 
-  overlay.addEventListener("click",(e)=>{
+  // ===== TAP =====
+  overlay.addEventListener("click", (e)=>{
 
-    if(!isCameraOn) return;
+    if(!isCameraOn || !geo) return;
 
-    const rect=overlay.getBoundingClientRect();
+    const rect = overlay.getBoundingClientRect();
 
-    const x=(e.clientX-rect.left)*(overlay.width/rect.width);
-    const y=(e.clientY-rect.top)*(overlay.height/rect.height);
+    const scaleX = overlay.width / rect.width;
+    const scaleY = overlay.height / rect.height;
 
-    handleTap(x,y,geo);
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
-    needRedraw=true;
+    handleTap(x, y, geo);
+
+    // 🔥 redraw ทันที
+    drawNow();
   });
+
 };
 
 function startLoop(){
 
   function loop(){
 
-    if(video.videoWidth>0){
+    if(video.videoWidth > 0){
 
-      const rect=overlay.getBoundingClientRect();
+      const rect = overlay.getBoundingClientRect();
 
-      overlay.width=rect.width;
-      overlay.height=rect.height;
-
-      if(needRedraw){
-        ctx.clearRect(0,0,overlay.width,overlay.height);
-        geo=drawGrid(overlay,ctx);
-        needRedraw=false;
+      // 🔥 resize canvas ให้ตรง display
+      if(
+        overlay.width !== rect.width ||
+        overlay.height !== rect.height
+      ){
+        overlay.width = rect.width;
+        overlay.height = rect.height;
       }
+
+      drawNow();
     }
 
-    requestAnimationFrame(loop);
+    animationId = requestAnimationFrame(loop);
   }
 
   loop();
+}
+
+// 🔥 วาดทันที (ใช้ร่วมกัน)
+function drawNow(){
+  ctx.clearRect(0,0,overlay.width,overlay.height);
+  geo = drawGrid(overlay, ctx);
 }
 
 function resetApp(){
 
   for(let r=0;r<5;r++){
     for(let c=0;c<4;c++){
-      gridState[r][c]={selected:false,type:"sample"};
+      gridState[r][c] = {
+        selected:false,
+        type:"sample"
+      };
     }
   }
 
-  mode="select"; // 🔥 reset mode
+  mode = "select";
 
-  needRedraw=true;
-
-  console.log("Reset done");
+  console.log("✅ Reset complete");
 }
