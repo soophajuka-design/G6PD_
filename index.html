@@ -7,63 +7,55 @@
 <style>
 body {
   margin:0;
-  background:black;
+  background:#0b0f14;
   color:white;
-  text-align:center;
   font-family:system-ui;
+  text-align:center;
 }
 
-/* container เต็มจอ */
 #container {
   position:relative;
-  width:100vw;
-  height:80vh;
+  width:100%;
+  max-width:500px;
   margin:auto;
   background:black;
 }
 
-/* video ไม่ crop */
-video {
-  position:absolute;
+video, canvas {
   width:100%;
-  height:100%;
-  object-fit:contain;
+  display:block;
 }
 
-/* overlay */
 canvas {
   position:absolute;
   top:0;
   left:0;
-  width:100%;
-  height:100%;
 }
 
-/* controls */
 #controls {
   margin-top:10px;
 }
 
 button {
   padding:10px;
-  margin:4px;
+  margin:5px;
   border:none;
   border-radius:6px;
   color:white;
 }
 
-.start { background:blue; }
-.normal { background:green; }
-.deficient { background:red; }
-.analyze { background:orange; }
-.reset { background:gray; }
+.start { background:#2563eb; }
+.normal { background:#22c55e; }
+.deficient { background:#ef4444; }
+.analyze { background:#f59e0b; }
+.reset { background:#6b7280; }
 
 </style>
 </head>
 
 <body>
 
-<h3>G6PD Analyzer (Baseline)</h3>
+<h3>G6PD Analyzer</h3>
 
 <div id="container">
   <video id="video" autoplay playsinline muted></video>
