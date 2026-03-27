@@ -21,36 +21,35 @@ window.onload = () => {
 
   overlay.addEventListener('click', e=>{
 
-    if(!isCameraOn) return;
+  if(!isCameraOn) return;
 
-    const rect = overlay.getBoundingClientRect();
+  const rect = overlay.getBoundingClientRect();
 
-    const x = (e.clientX - rect.left) * (overlay.width / rect.width);
-    const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+  const x = (e.clientX - rect.left) * (overlay.width / rect.width);
+  const y = (e.clientY - rect.top) * (overlay.height / rect.height);
 
-    handleTap(x,y,geo);
+  // 🔥 STEP 1: update state
+  handleTap(x, y, geo);
 
-    needRedraw = true;
-  });
+  // 🔥 STEP 2: บังคับ redraw
+  needRedraw = true;
+
+});
 };
 
 function startLoop(){
 
   function loop(){
 
-    if(video.videoWidth > 0){
+if(video.videoWidth > 0){
 
-      const rect = overlay.getBoundingClientRect();
+  const rect = overlay.getBoundingClientRect();
 
-      overlay.width = rect.width;
-      overlay.height = rect.height;
+  overlay.width = rect.width;
+  overlay.height = rect.height;
 
-      if(needRedraw){
-        ctx.clearRect(0,0,overlay.width,overlay.height);
-        geo = drawGrid(overlay,ctx);
-        needRedraw = false;
-      }
-    }
+  needRedraw = true;
+}
 
     requestAnimationFrame(loop);
   }
