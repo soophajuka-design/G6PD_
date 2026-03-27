@@ -23,20 +23,32 @@ h3 {
   width:100%;
   max-width:500px;
   margin:auto;
+
+  /* 🔥 FIX: lock aspect ratio */
+  aspect-ratio: 7.1 / 12.8;
+
   border-radius:12px;
   overflow:hidden;
   background:black;
 }
 
-video, canvas {
+//
+  video {
+  position:absolute;
   width:100%;
-  display:block;
+  height:100%;
+
+  object-fit: cover; /* 🔥 สำคัญ */
 }
 
-canvas {
+  canvas {
   position:absolute;
   top:0;
   left:0;
+
+  width:100%;
+  height:100%;
+
   z-index:2;
 }
 
