@@ -27,8 +27,8 @@ function drawGrid(canvas, ctx){
   const usableH = h*(1-margin*2);
 
   // 🔥 FIX RATIO (height / width ของกระดาษจริง)
-  const ratio = 12.8 / 7.1;
-
+//  const ratio = 12.8 / 7.1;
+   const ratio = 7.1 / 12.8;
   let pw = usableW;
   let ph = pw * ratio;
 
