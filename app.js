@@ -1,15 +1,19 @@
 let overlay, ctx;
-let geo;
+let geo = null;
 let isCameraOn = false;
+let needRedraw = true;
 
-window.onload = () => {
+// 🔥 ใช้ DOMContentLoaded (เสถียรกว่า iOS)
+document.addEventListener("DOMContentLoaded", () => {
 
   overlay = document.getElementById('overlay');
   ctx = overlay.getContext('2d');
 
+  // ===== TAP =====
   overlay.addEventListener('click', (e)=>{
 
     if(!isCameraOn) return;
+    if(!geo) return; // 🔥 กัน crash
 
     const rect = overlay.getBoundingClientRect();
 
@@ -18,24 +22,35 @@ window.onload = () => {
 
     handleTap(x, y, geo);
 
-    ctx.clearRect(0,0,overlay.width, overlay.height);
-    geo = drawGrid(overlay, ctx);
+    // 🔥 redraw ทันที (ไม่รอ loop)
+    drawNow();
   });
-};
 
+});
+
+// ===== LOOP =====
 function startLoop(){
 
   function loop(){
 
-    if(video.videoWidth > 0){
+    if(video && video.videoWidth > 0){
 
-      if(overlay.width !== video.videoWidth){
+      // 🔥 resize ให้ match video จริง
+      if(
+        overlay.width !== video.videoWidth ||
+        overlay.height !== video.videoHeight
+      ){
         overlay.width = video.videoWidth;
         overlay.height = video.videoHeight;
+
+        needRedraw = true;
       }
 
-      ctx.clearRect(0,0,overlay.width, overlay.height);
-      geo = drawGrid(overlay, ctx);
+      // 🔥 redraw เฉพาะเมื่อจำเป็น
+      if(needRedraw){
+        drawNow();
+        needRedraw = false;
+      }
     }
 
     requestAnimationFrame(loop);
@@ -44,6 +59,15 @@ function startLoop(){
   loop();
 }
 
+// ===== DRAW =====
+function drawNow(){
+  if(!overlay || !ctx) return;
+
+  ctx.clearRect(0,0,overlay.width, overlay.height);
+  geo = drawGrid(overlay, ctx);
+}
+
+// ===== RESET =====
 function resetApp(){
 
   for(let r=0;r<5;r++){
@@ -55,5 +79,14 @@ function resetApp(){
     }
   }
 
-  console.log("Reset");
+  // 🔥 กลับ default mode
+  if(typeof setMode === "function"){
+    setMode("sample");
+  }
+
+  // 🔥 redraw ทันที
+  needRedraw = true;
+  drawNow();
+
+  console.log("✅ Reset complete");
 }
