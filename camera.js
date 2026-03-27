@@ -7,23 +7,32 @@ function initCameraElement(){
 
 async function startCamera(){
 
-  // 🔥 ปิดกล้องเก่า
-  if(currentStream){
-    currentStream.getTracks().forEach(track=>track.stop());
+  try {
+
+    // 🔥 stop old stream
+    if(currentStream){
+      currentStream.getTracks().forEach(t=>t.stop());
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "environment"
+      },
+      audio:false
+    });
+
+    currentStream = stream;
+
+    video.srcObject = stream;
+
+    await video.play();
+
+    console.log("✅ Camera started");
+
+  } catch(err) {
+
+    console.error("❌ Camera error:", err);
+    alert("Camera error: " + err.message);
+
   }
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: { ideal: "environment" } }
-  });
-
-  currentStream = stream;
-
-  video.srcObject = stream;
-
-  return new Promise(resolve=>{
-    video.onloadedmetadata = ()=>{
-      video.play();
-      resolve();
-    };
-  });
 }
