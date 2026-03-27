@@ -1,96 +1,52 @@
+function detectPaperCorners(src){
 
-// detect.js
-
-
-function detectPaper(canvas) {
-  let src = cv.imread(canvas);
   let gray = new cv.Mat();
-  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-
   let edges = new cv.Mat();
+
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  cv.GaussianBlur(gray, gray, new cv.Size(5,5), 0);
   cv.Canny(gray, edges, 50, 150);
 
   let contours = new cv.MatVector();
   let hierarchy = new cv.Mat();
 
   cv.findContours(edges, contours, hierarchy,
-    cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    cv.RETR_EXTERNAL,
+    cv.CHAIN_APPROX_SIMPLE
+  );
 
-  let maxArea=0, best=null;
+  let maxArea = 0;
+  let best = null;
 
   for(let i=0;i<contours.size();i++){
     let cnt = contours.get(i);
     let area = cv.contourArea(cnt);
-    if(area>maxArea){ maxArea=area; best=cnt;}
-  }
 
-  return best;
-}
+    if(area > maxArea){
+      let peri = cv.arcLength(cnt, true);
+      let approx = new cv.Mat();
+      cv.approxPolyDP(cnt, approx, 0.02 * peri, true);
 
-// detect.js
-
-function detectPaperCorners(canvas) {
-
-  let src = cv.imread(canvas);
-  let gray = new cv.Mat();
-
-  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-  cv.GaussianBlur(gray, gray, new cv.Size(5,5), 0);
-
-  let edges = new cv.Mat();
-  cv.Canny(gray, edges, 50, 150);
-
-  let contours = new cv.MatVector();
-  let hierarchy = new cv.Mat();
-
-  cv.findContours(edges, contours, hierarchy,
-    cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-  let maxArea = 0;
-  let bestContour = null;
-
-  for (let i = 0; i < contours.size(); i++) {
-    let cnt = contours.get(i);
-    let area = cv.contourArea(cnt);
-
-    if (area > maxArea) {
-      maxArea = area;
-      bestContour = cnt;
+      if(approx.rows === 4){
+        maxArea = area;
+        best = approx;
+      }
     }
   }
 
-  if (!bestContour) return null;
+  gray.delete(); edges.delete(); contours.delete(); hierarchy.delete();
 
-  // approximate polygon
-  let peri = cv.arcLength(bestContour, true);
-  let approx = new cv.Mat();
+  if(!best) return null;
 
-  cv.approxPolyDP(bestContour, approx, 0.02 * peri, true);
-
-  if (approx.rows !== 4) {
-    console.log("Not 4 corners");
-    return null;
+  let pts = [];
+  for(let i=0;i<4;i++){
+    pts.push({
+      x: best.data32S[i*2],
+      y: best.data32S[i*2+1]
+    });
   }
 
-  let points = [];
-  for (let i = 0; i < 4; i++) {
-    let p = approx.intPtr(i);
-    points.push({ x: p[0], y: p[1] });
-  }
+  best.delete();
 
-  return orderPoints(points);
-}
-
-function orderPoints(pts) {
-
-  // sort by sum (top-left, bottom-right)
-  let sum = pts.map(p => p.x + p.y);
-  let diff = pts.map(p => p.y - p.x);
-
-  return [
-    pts[sum.indexOf(Math.min(...sum))], // TL
-    pts[diff.indexOf(Math.min(...diff))], // TR
-    pts[sum.indexOf(Math.max(...sum))], // BR
-    pts[diff.indexOf(Math.max(...diff))]  // BL
-  ];
+  return pts;
 }
