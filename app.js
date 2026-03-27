@@ -10,23 +10,10 @@ window.onload = () => {
   ctx = overlay.getContext("2d");
 
   // ===== START BUTTON =====
-  document.getElementById("startBtn").onclick = async () => {
+document.getElementById('startBtn').addEventListener('click', () => {
 
-    // 🔥 stop loop เก่า
-    if(animationId){
-      cancelAnimationFrame(animationId);
-      animationId = null;
-    }
-
-    await startCamera();
-
-    isCameraOn = true;
-
-    // 🔥 reset state
-    resetApp();
-
-    startLoop();
-  };
+  startCameraDirect(); // 🔥 เรียกทันที
+});
 
   // ===== TAP =====
   overlay.addEventListener("click", (e)=>{
