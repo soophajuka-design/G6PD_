@@ -1,47 +1,41 @@
+let gridState = [];
+let mode = "sample";
+
+for(let r=0;r<5;r++){
+  gridState[r]=[];
+  for(let c=0;c<4;c++){
+    gridState[r][c]={selected:false,type:"sample"};
+  }
+}
+
+function setMode(m){
+  mode = m;
+}
+
 function drawGrid(canvas, ctx){
 
-  const rows = 5;
-  const cols = 4;
+  const rows=5, cols=4;
 
-  const W = canvas.width;
-  const H = canvas.height;
+  const w = canvas.width;
+  const h = canvas.height;
 
-  const targetRatio = 7.1 / 12.8;
-  const screenRatio = W / H;
+  const cellW = w/cols;
+  const cellH = h/rows;
 
-  let gridW, gridH, offsetX, offsetY;
+  let geo=[];
 
-  if(screenRatio > targetRatio){
-    // จอกว้าง → fit height
-    gridH = H;
-    gridW = H * targetRatio;
-    offsetX = (W - gridW)/2;
-    offsetY = 0;
-  }else{
-    // จอสูง → fit width
-    gridW = W;
-    gridH = W / targetRatio;
-    offsetX = 0;
-    offsetY = (H - gridH)/2;
-  }
-
-  const cellW = gridW / cols;
-  const cellH = gridH / rows;
-
-  let geo = [];
-
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle="white";
+  ctx.lineWidth=2;
 
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
-      let x = offsetX + c*cellW;
-      let y = offsetY + r*cellH;
+      let x=c*cellW;
+      let y=r*cellH;
 
       ctx.strokeRect(x,y,cellW,cellH);
 
-      let state = gridState[r][c];
+      let state=gridState[r][c];
 
       if(state.selected){
         ctx.fillStyle =
@@ -49,7 +43,7 @@ function drawGrid(canvas, ctx){
           state.type==="deficient"?"red":"yellow";
 
         ctx.beginPath();
-        ctx.arc(x+cellW/2, y+cellH/2, 12, 0, Math.PI*2);
+        ctx.arc(x+cellW/2,y+cellH/2,10,0,Math.PI*2);
         ctx.fill();
       }
 
@@ -58,4 +52,17 @@ function drawGrid(canvas, ctx){
   }
 
   return geo;
+}
+
+function handleTap(x,y,geo){
+
+  geo.forEach(cell=>{
+    if(x>cell.x && x<cell.x+cell.w &&
+       y>cell.y && y<cell.y+cell.h){
+
+      let s=gridState[cell.row][cell.col];
+      s.selected=true;
+      s.type=mode;
+    }
+  });
 }
