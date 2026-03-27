@@ -24,8 +24,11 @@ window.onload = ()=>{
 
     const rect = overlay.getBoundingClientRect();
 
-    const x = (e.clientX - rect.left) * (overlay.width / rect.width);
-    const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+    const scaleX = overlay.width / rect.width;
+    const scaleY = overlay.height / rect.height;
+
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     handleTap(x,y,geo);
     redraw();
@@ -43,6 +46,7 @@ function startLoop(){
 
     if(video.videoWidth > 0){
 
+      // 🔥 FIX สำคัญ: ใช้ aspect จริงของ video
       const rect = overlay.getBoundingClientRect();
 
       overlay.width = rect.width;
