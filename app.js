@@ -29,7 +29,10 @@ window.onload = () => {
 
     handleTap(x, y, geo);
 
-    needRedraw = true;
+// 🔥 redraw ทันที (ไม่ต้องรอ loop)
+   ctx.clearRect(0,0,overlay.width, overlay.height);
+    geo = drawGrid(overlay, ctx);
+
   });
 
   // 🔥 FIX: bind analyze button
