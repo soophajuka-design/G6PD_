@@ -1,82 +1,94 @@
-let gridState = [];
+let mode = "select";
 
-for(let r=0;r<5;r++){
-  gridState[r]=[];
-  for(let c=0;c<4;c++){
-    gridState[r][c]={
-      selected:false,
-      type:"sample"
-    };
+function setMode(m) {
+  mode = m;
+  console.log("Mode:", m);
+}
+
+let gridState = Array.from({length:5}, () =>
+  Array.from({length:4}, () => ({
+    selected:false,
+    type:"sample"
+  }))
+);
+
+function drawGrid(canvas, ctx) {
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.clearRect(0,0,w,h);
+
+  // margin 10%
+  const margin = 0.1;
+
+  const usableW = w*(1-margin*2);
+  const usableH = h*(1-margin*2);
+
+  const ratio = 7.1/12.8;
+
+  let pw = usableW;
+  let ph = pw/ratio;
+
+  if (ph > usableH) {
+    ph = usableH;
+    pw = ph*ratio;
   }
-}
 
-let currentMode = "sample";
+  const sx = (w-pw)/2;
+  const sy = (h-ph)/2;
 
-function setMode(mode){
-  currentMode = mode;
-}
+  const cols=4, rows=5;
+  const cw = pw/cols;
+  const ch = ph/rows;
 
-function drawGrid(canvas, ctx){
-
-  const rows=5, cols=4;
-
-  let w = canvas.width * 0.8;
-  let h = w * (5/4);
-
-  let startX = (canvas.width - w)/2;
-  let startY = (canvas.height - h)/2;
-
-  let cellW = w/cols;
-  let cellH = h/rows;
-
-  let geo=[];
-
-  ctx.strokeStyle="white";
-  ctx.lineWidth=2;
-
+  // draw cells
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
 
-      let x = startX + c*cellW;
-      let y = startY + r*cellH;
+      let x = sx + c*cw;
+      let y = sy + r*ch;
 
-      ctx.strokeRect(x,y,cellW,cellH);
+      let cell = gridState[r][c];
 
-      let s = gridState[r][c];
+      // สีตามสถานะ
+      if(cell.type==="normal") ctx.strokeStyle="lime";
+      else if(cell.type==="deficient") ctx.strokeStyle="red";
+      else if(cell.selected) ctx.strokeStyle="yellow";
+      else ctx.strokeStyle="#00FFAA";
 
-      if(s.selected){
-        ctx.fillStyle =
-          s.type==="normal"?"#22c55e":
-          s.type==="deficient"?"#ef4444":"#facc15";
+      ctx.strokeRect(x,y,cw,ch);
 
-        ctx.beginPath();
-        ctx.arc(x+cellW/2,y+cellH/2,10,0,Math.PI*2);
-        ctx.fill();
-      }
-
-      geo.push({row:r,col:c,x,y,w:cellW,h:cellH});
+      // วงกลม
+      ctx.beginPath();
+      ctx.arc(x+cw/2, y+ch/2, Math.min(cw,ch)*0.3, 0, 2*Math.PI);
+      ctx.stroke();
     }
   }
 
-  return geo;
+  return {sx,sy,cw,ch};
 }
 
 function handleTap(x,y,geo){
 
-  geo.forEach(cell=>{
-    if(
-      x>cell.x && x<cell.x+cell.w &&
-      y>cell.y && y<cell.y+cell.h
-    ){
-      let s = gridState[cell.row][cell.col];
+  const col = Math.floor((x-geo.sx)/geo.cw);
+  const row = Math.floor((y-geo.sy)/geo.ch);
 
-      s.selected = !s.selected;
+  if(col<0||col>=4||row<0||row>=5) return;
 
-      if(currentMode==="normal") s.type="normal";
-      else if(currentMode==="deficient") s.type="deficient";
-      else s.type="sample";
+  let cell = gridState[row][col];
 
-      currentMode="sample";
-    }
-  });
+  if(mode==="select") {
+    cell.selected = !cell.selected;
+  }
+
+  if(mode==="normal") {
+    cell.type="normal";
+  }
+
+  if(mode==="deficient") {
+    cell.type="deficient";
+  }
+
+  console.log("Tap:", row, col, cell);
 }
