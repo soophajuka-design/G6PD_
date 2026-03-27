@@ -16,23 +16,26 @@ body {
 /* === CONTAINER (LOCK RATIO) === */
 #container {
   position:relative;
-  width:100%;
-  max-width:500px;
-  margin:auto;
-
-  aspect-ratio: 7.1 / 12.8; /* 🔥 FIX */
-
+  width:100vw;
+  height:100vh;   /* 🔥 เต็มจอ */
+  margin:0;
   background:black;
-  border-radius:12px;
   overflow:hidden;
 }
 
-/* === VIDEO === */
 video {
   position:absolute;
   width:100%;
   height:100%;
-  object-fit:contain; /* 🔥 FIX iPhone */
+  object-fit:cover; /* 🔥 เต็มจอ */
+}
+
+canvas {
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
 }
 
 /* === OVERLAY === */
