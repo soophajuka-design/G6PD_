@@ -27,3 +27,7 @@ function handleTap(x,y,geo){
 
   console.log("Tap:", row, col, cell);
 }
+window.gridState = gridState;
+window.setMode = setMode;
+window.handleTap = handleTap;
+window.drawGrid = drawGrid;
