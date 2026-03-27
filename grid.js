@@ -1,3 +1,4 @@
+
 let gridState = [];
 let mode = "sample";
 
