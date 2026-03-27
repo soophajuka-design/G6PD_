@@ -19,9 +19,9 @@ function drawGrid(canvas, ctx){
   const W = canvas.width;
   const H = canvas.height;
 
-  // 🔥 GRID เล็กกว่า live view (80%)
-  const gridW = W * 0.8;
-  const gridH = H * 0.8;
+  // 🔥 FIX: grid = 70% ของ live view (ไม่ล้น)
+  const gridW = W * 0.7;
+  const gridH = H * 0.7;
 
   const offsetX = (W - gridW)/2;
   const offsetY = (H - gridH)/2;
@@ -46,11 +46,11 @@ function drawGrid(canvas, ctx){
 
       if(s.selected){
         ctx.fillStyle =
-          s.type==="normal"?"green":
-          s.type==="deficient"?"red":"yellow";
+          s.type==="normal"?"#22c55e":
+          s.type==="deficient"?"#ef4444":"#facc15";
 
         ctx.beginPath();
-        ctx.arc(x+cellW/2,y+cellH/2,10,0,Math.PI*2);
+        ctx.arc(x+cellW/2,y+cellH/2,12,0,Math.PI*2);
         ctx.fill();
       }
 
@@ -72,8 +72,10 @@ function handleTap(x,y,geo){
       s.selected = true;
       s.type = mode;
 
-      // 🔥 ใช้ครั้งเดียว → กลับ sample
-      mode = "sample";
+      // 🔥 FIX: reset mode หลังใช้
+      if(mode !== "sample"){
+        mode = "sample";
+      }
     }
   });
 }
