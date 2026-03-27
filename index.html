@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>G6PD Analyzer</title>
 
 <style>
@@ -13,87 +13,79 @@ body {
   text-align:center;
 }
 
-/* === LIVE VIEW === */
+h3 {
+  margin:10px;
+}
+
+/* === CAMERA AREA === */
 #container {
   position:relative;
   width:100%;
-  height:80vh;
-  background:black;
+  max-width:500px;
+  margin:auto;
+  border-radius:12px;
   overflow:hidden;
+  background:black;
 }
 
-/* VIDEO */
-video {
-  position:absolute;
+video, canvas {
   width:100%;
-  height:100%;
-  object-fit:contain; /* ✅ ไม่ crop ไม่ zoom */
+  display:block;
 }
 
-/* OVERLAY */
 canvas {
   position:absolute;
-  width:100%;
-  height:100%;
   top:0;
   left:0;
+  z-index:2;
 }
 
-/* === LEGEND (ล่างซ้าย นอก grid) === */
+/* === LEGEND === */
 #legend {
   position:absolute;
-  bottom:80px;
-  left:12px;
-
-  background:rgba(0,0,0,0.7);
+  top:10px;
+  left:10px;
+  background:rgba(0,0,0,0.6);
   padding:8px 10px;
-  border-radius:10px;
-
+  border-radius:8px;
   font-size:12px;
-  line-height:1.6;
-
-  backdrop-filter: blur(4px);
+  text-align:left;
   z-index:3;
 }
 
-#legend div{
-  display:flex;
-  align-items:center;
-  gap:6px;
-}
-
-.dot{
+.dot {
+  display:inline-block;
   width:10px;
   height:10px;
   border-radius:50%;
+  margin-right:6px;
 }
 
-.normal-dot{ background:#22c55e; }
-.def-dot{ background:#ef4444; }
-.sample-dot{ background:#facc15; }
+.dot.normal { background:#22c55e; }
+.dot.deficient { background:#ef4444; }
+.dot.selected { background:#facc15; }
+.dot.grid { background:#ffffff; border:1px solid #ccc; }
 
-/* === FLOAT CONTROL BAR === */
-#controls{
-  position:absolute;
-  bottom:10px;
-  left:50%;
-  transform:translateX(-50%);
-
+/* === CONTROL PANEL === */
+#controls {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  background:#111827;
+  padding:10px;
   display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
   gap:8px;
-
-  background:rgba(0,0,0,0.6);
-  padding:8px 12px;
-  border-radius:14px;
-  z-index:4;
+  box-shadow:0 -2px 10px rgba(0,0,0,0.6);
 }
 
-button{
-  padding:8px 12px;
+button {
+  padding:10px 14px;
   border:none;
   border-radius:8px;
+  font-size:14px;
   color:white;
-  font-size:13px;
 }
 
 .start { background:#2563eb; }
@@ -102,7 +94,7 @@ button{
 .analyze { background:#f59e0b; }
 .reset { background:#6b7280; }
 
-button:active{
+button:active {
   transform:scale(0.95);
 }
 </style>
@@ -113,39 +105,61 @@ button:active{
 <h3>G6PD Analyzer</h3>
 
 <div id="container">
-
-  <!-- CAMERA -->
   <video id="video" autoplay playsinline muted></video>
-
-  <!-- GRID OVERLAY -->
   <canvas id="overlay"></canvas>
 
-  <!-- LEGEND -->
   <div id="legend">
-    <div><span class="dot normal-dot"></span>Normal</div>
-    <div><span class="dot def-dot"></span>Deficient</div>
-    <div><span class="dot sample-dot"></span>Sample</div>
+    <div><span class="dot normal"></span> Normal</div>
+    <div><span class="dot deficient"></span> Deficient</div>
+    <div><span class="dot selected"></span> Selected</div>
+    <div><span class="dot grid"></span> Grid</div>
   </div>
-
-  <!-- CONTROL BAR -->
-  <div id="controls">
-    <button id="startBtn" class="start">Start</button>
-    <button onclick="setMode('normal')" class="normal">Normal</button>
-    <button onclick="setMode('deficient')" class="deficient">Deficient</button>
-    <button id="analyzeBtn" class="analyze">Analyze</button>
-    <button onclick="resetApp()" class="reset">Reset</button>
-  </div>
-
 </div>
 
-<!-- LIB -->
+<div id="controls">
+  <button class="start" id="startBtn">Start</button>
+  <button class="normal" onclick="setMode('normal')">Normal</button>
+  <button class="deficient" onclick="setMode('deficient')">Deficient</button>
+  <button class="analyze" id="analyzeBtn">Analyze</button>
+  <button class="reset" onclick="resetApp()">Reset</button>
+</div>
+
+<!-- ✅ OpenCV (ต้องมาก่อน analyzer) -->
 <script src="https://docs.opencv.org/4.5.5/opencv.js"></script>
 
-<!-- APP FILES -->
+<!-- ✅ App scripts (ลำดับสำคัญมาก) -->
 <script src="camera.js"></script>
 <script src="grid.js"></script>
 <script src="analyzer.js"></script>
 <script src="app.js"></script>
+
+<!-- 🔥 FIX เสถียรสุดสำหรับ iPad -->
+<script>
+window.addEventListener("load", function(){
+
+  const btn = document.getElementById("analyzeBtn");
+
+  btn.addEventListener("click", function(){
+
+    if(typeof analyze !== "function"){
+      alert("analyze() not loaded");
+      console.error("❌ analyze not found");
+      return;
+    }
+
+    if(typeof cv === "undefined" || !cv.Mat){
+      alert("OpenCV not ready");
+      console.error("❌ OpenCV not ready");
+      return;
+    }
+
+    console.log("✅ Analyze button clicked");
+
+    analyze();
+  });
+
+});
+</script>
 
 </body>
 </html>
