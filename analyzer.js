@@ -1,6 +1,6 @@
 function analyze(){
 
-  console.log("Analyze OK");
+  console.log("Analyze called");
 
   let selected=[];
 
@@ -19,4 +19,4 @@ function analyze(){
   }
 }
 
-window.analyze=analyze;
+window.analyze = analyze;
