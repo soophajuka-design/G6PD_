@@ -1,8 +1,27 @@
-let overlay, ctx, geo;
+let overlay, ctx;
+let geo;
 let isCameraOn = false;
-let animationId = null;
 
+window.onload = () => {
 
+  overlay = document.getElementById('overlay');
+  ctx = overlay.getContext('2d');
+
+  overlay.addEventListener('click', (e)=>{
+
+    if(!isCameraOn) return;
+
+    const rect = overlay.getBoundingClientRect();
+
+    const x = (e.clientX - rect.left) * (overlay.width / rect.width);
+    const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+
+    handleTap(x, y, geo);
+
+    ctx.clearRect(0,0,overlay.width, overlay.height);
+    geo = drawGrid(overlay, ctx);
+  });
+};
 
 function startLoop(){
 
@@ -10,30 +29,19 @@ function startLoop(){
 
     if(video.videoWidth > 0){
 
-      const rect = overlay.getBoundingClientRect();
-
-      // 🔥 resize canvas ให้ตรง display
-      if(
-        overlay.width !== rect.width ||
-        overlay.height !== rect.height
-      ){
-        overlay.width = rect.width;
-        overlay.height = rect.height;
+      if(overlay.width !== video.videoWidth){
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
       }
 
-      drawNow();
+      ctx.clearRect(0,0,overlay.width, overlay.height);
+      geo = drawGrid(overlay, ctx);
     }
 
-    animationId = requestAnimationFrame(loop);
+    requestAnimationFrame(loop);
   }
 
   loop();
-}
-
-// 🔥 วาดทันที (ใช้ร่วมกัน)
-function drawNow(){
-  ctx.clearRect(0,0,overlay.width,overlay.height);
-  geo = drawGrid(overlay, ctx);
 }
 
 function resetApp(){
@@ -47,7 +55,5 @@ function resetApp(){
     }
   }
 
-  mode = "select";
-
-  console.log("✅ Reset complete");
+  console.log("Reset");
 }
