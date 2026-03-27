@@ -6,15 +6,35 @@ function initCameraElement(){
 
 async function startCamera(){
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video:{
-      facingMode:{ ideal:"environment" } // ✅ กล้องหลัง
-    },
-    audio:false
-  });
+  try{
 
-  video.srcObject = stream;
-  await video.play();
+    // 🔥 iOS ต้องใช้ exact ก่อน
+    let stream;
 
-  console.log("Camera started (rear)");
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:{ exact:"environment" }
+        },
+        audio:false
+      });
+    }catch(e){
+      // fallback Android / browser
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{
+          facingMode:"environment"
+        },
+        audio:false
+      });
+    }
+
+    video.srcObject = stream;
+    await video.play();
+
+    console.log("✅ Rear camera active");
+
+  }catch(err){
+    alert("Camera error: " + err.message);
+    console.error(err);
+  }
 }
