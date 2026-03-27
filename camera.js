@@ -5,38 +5,7 @@ function initCameraElement(){
   video = document.getElementById("video");
 }
 
-async function startCamera(){
-
-  try {
-
-    // 🔥 stop old stream
-    if(currentStream){
-      currentStream.getTracks().forEach(t=>t.stop());
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "environment"
-      },
-      audio:false
-    });
-
-    currentStream = stream;
-
-    video.srcObject = stream;
-
-    await video.play();
-
-    console.log("✅ Camera started");
-
-  } catch(err) {
-
-    console.error("❌ Camera error:", err);
-    alert("Camera error: " + err.message);
-
-  }
-}
-
+// 🔥 MUST be direct call from click
 async function startCameraDirect(){
 
   try {
@@ -47,7 +16,7 @@ async function startCameraDirect(){
 
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
-      audio:false
+      audio: false
     });
 
     currentStream = stream;
@@ -55,9 +24,9 @@ async function startCameraDirect(){
 
     await video.play();
 
-    console.log("✅ iPhone camera started");
+    console.log("✅ Camera started");
 
-    // 🔥 start loop หลังจากเปิดกล้อง
+    // 🔥 start system
     isCameraOn = true;
     resetApp();
     startLoop();
@@ -69,3 +38,5 @@ async function startCameraDirect(){
 
   }
 }
+
+window.startCameraDirect = startCameraDirect;
