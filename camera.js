@@ -5,13 +5,15 @@ function startCameraDirect(){
 
   video = document.getElementById("video");
 
-  if(!navigator.mediaDevices){
-    alert("Camera not supported");
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert("Camera API not supported");
     return;
   }
 
   navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "environment" },
+    video: {
+      facingMode: { exact: "environment" }
+    },
     audio:false
   })
   .then(stream => {
@@ -21,9 +23,13 @@ function startCameraDirect(){
     }
 
     currentStream = stream;
+
     video.srcObject = stream;
 
+    video.setAttribute("playsinline", true);
+
     return video.play();
+
   })
   .then(()=>{
 
@@ -35,8 +41,13 @@ function startCameraDirect(){
 
   })
   .catch(err=>{
-    console.error(err);
-    alert(err.name + ": " + err.message);
+
+    console.error("❌ Camera error:", err);
+
+    alert(
+      err.name + "\n" +
+      err.message
+    );
   });
 }
 
