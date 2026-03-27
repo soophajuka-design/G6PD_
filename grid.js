@@ -52,11 +52,13 @@ function drawGrid(canvas, ctx) {
       let cell = gridState[r][c];
 
       // สีตามสถานะ
-      if(cell.type==="normal") ctx.strokeStyle="lime";
-      else if(cell.type==="deficient") ctx.strokeStyle="red";
-      else if(cell.selected) ctx.strokeStyle="yellow";
-      else ctx.strokeStyle="#00FFAA";
 
+      if(cell.type==="normal") ctx.strokeStyle="#22c55e";
+        else if(cell.type==="deficient") ctx.strokeStyle="#ef4444";
+        else if(cell.selected) ctx.strokeStyle="#facc15";
+        else ctx.strokeStyle="#00FFAA";
+      
+      ctx.lineWidth = 2;
       ctx.strokeRect(x,y,cw,ch);
 
       // วงกลม
