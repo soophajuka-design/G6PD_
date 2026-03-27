@@ -19,15 +19,17 @@ function drawGrid(canvas, ctx){
   const W = canvas.width;
   const H = canvas.height;
 
-  // 🔥 FIX: grid = 70% ของ live view (ไม่ล้น)
-  const gridW = W * 0.7;
-  const gridH = H * 0.7;
+  // 🔥 FIX สำคัญ: grid scale ต้องสัมพันธ์กับ "สั้นที่สุด"
+  const base = Math.min(W, H);
+
+  const gridW = base * 0.75;
+  const gridH = base * 0.75 * (5/4); // ratio 4x5
 
   const offsetX = (W - gridW)/2;
   const offsetY = (H - gridH)/2;
 
-  const cellW = gridW/cols;
-  const cellH = gridH/rows;
+  const cellW = gridW / cols;
+  const cellH = gridH / rows;
 
   let geo=[];
 
@@ -72,10 +74,8 @@ function handleTap(x,y,geo){
       s.selected = true;
       s.type = mode;
 
-      // 🔥 FIX: reset mode หลังใช้
-      if(mode !== "sample"){
-        mode = "sample";
-      }
+      // 🔥 FIX: reset กลับ sample ทันที
+      mode = "sample";
     }
   });
 }
