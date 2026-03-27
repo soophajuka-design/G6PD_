@@ -1,78 +1,54 @@
-let overlay, ctx;
-let geo;
-let isCameraOn = false;
-let needRedraw = true;
+let overlay, ctx, geo;
+let isCameraOn=false;
+let needRedraw=true;
 
-window.onload = () => {
+window.onload=()=>{
 
   initCameraElement();
 
-  overlay = document.getElementById('overlay');
-  ctx = overlay.getContext('2d');
+  overlay=document.getElementById("overlay");
+  ctx=overlay.getContext("2d");
 
-  // START CAMERA
-  document.getElementById('startBtn').onclick = async () => {
+  document.getElementById("startBtn").onclick=async()=>{
+
     await startCamera();
-    isCameraOn = true;
+
+    isCameraOn=true;
+    needRedraw=true;
+
     startLoop();
   };
 
-  // TAP SELECT
-  overlay.addEventListener('click', (e)=>{
+  overlay.addEventListener("click",(e)=>{
 
     if(!isCameraOn) return;
 
-    const rect = overlay.getBoundingClientRect();
+    const rect=overlay.getBoundingClientRect();
 
-    const x = (e.clientX - rect.left) * (overlay.width / rect.width);
-    const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+    const x=(e.clientX-rect.left)*(overlay.width/rect.width);
+    const y=(e.clientY-rect.top)*(overlay.height/rect.height);
 
-    handleTap(x, y, geo);
+    handleTap(x,y,geo);
 
-// 🔥 redraw ทันที (ไม่ต้องรอ loop)
-   ctx.clearRect(0,0,overlay.width, overlay.height);
-    geo = drawGrid(overlay, ctx);
-
+    needRedraw=true;
   });
-
-  // 🔥 FIX: bind analyze button
-  const analyzeBtn = document.getElementById("analyzeBtn");
-
-  if(analyzeBtn){
-    analyzeBtn.onclick = ()=>{
-
-      if(typeof analyze !== "function"){
-        alert("analyze() not loaded");
-        console.error("analyze not found");
-        return;
-      }
-
-      console.log("✅ Analyze clicked");
-
-      analyze();
-    };
-  }
 };
 
 function startLoop(){
 
   function loop(){
 
-    if(video.videoWidth > 0){
+    if(video.videoWidth>0){
 
-      if(overlay.width !== video.videoWidth ||
-         overlay.height !== video.videoHeight){
+      const rect=overlay.getBoundingClientRect();
 
-        overlay.width = video.videoWidth;
-        overlay.height = video.videoHeight;
-
-        needRedraw = true;
-      }
+      overlay.width=rect.width;
+      overlay.height=rect.height;
 
       if(needRedraw){
-        ctx.clearRect(0,0,overlay.width, overlay.height);
-        geo = drawGrid(overlay, ctx);
-        needRedraw = false;
+        ctx.clearRect(0,0,overlay.width,overlay.height);
+        geo=drawGrid(overlay,ctx);
+        needRedraw=false;
       }
     }
 
@@ -82,30 +58,17 @@ function startLoop(){
   loop();
 }
 
-function resetApp() {
+function resetApp(){
 
   for(let r=0;r<5;r++){
     for(let c=0;c<4;c++){
-      gridState[r][c] = {
-        selected:false,
-        type:"sample"
-      };
+      gridState[r][c]={selected:false,type:"sample"};
     }
   }
 
-  needRedraw = true;
+  mode="select"; // 🔥 reset mode
 
-  console.log("Reset complete");
-}
+  needRedraw=true;
 
-function drawCorners(ctx, corners){
-  if(!corners) return;
-
-  ctx.fillStyle = "red";
-
-  corners.forEach(p=>{
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
-    ctx.fill();
-  });
+  console.log("Reset done");
 }
