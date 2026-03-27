@@ -8,22 +8,17 @@ async function startCamera(){
 
   try{
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 1920 }
-      },
+      video:true,
       audio:false
     });
 
     video.srcObject = stream;
     await video.play();
 
-    console.log("✅ Camera started");
+    console.log("Camera OK");
 
   }catch(err){
-    alert("Camera error: " + err.message);
-    console.error(err);
+    alert(err.message);
   }
 }
 
@@ -34,7 +29,7 @@ function captureFrame(){
   canvas.height = video.videoHeight;
 
   const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0);
+  ctx.drawImage(video,0,0);
 
   return cv.imread(canvas);
 }
