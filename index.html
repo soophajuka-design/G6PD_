@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>G6PD Analyzer</title>
 
 <style>
@@ -13,17 +13,25 @@ body {
   text-align:center;
 }
 
-/* === LIVE VIEW เต็มพื้นที่ === */
+/* === LIVE VIEW === */
 #container {
   position:relative;
   width:100%;
   height:80vh;
-  margin:auto;
   background:black;
   overflow:hidden;
 }
 
-video, canvas {
+/* VIDEO */
+video {
+  position:absolute;
+  width:100%;
+  height:100%;
+  object-fit:contain; /* ✅ ไม่ crop ไม่ zoom */
+}
+
+/* OVERLAY */
+canvas {
   position:absolute;
   width:100%;
   height:100%;
@@ -35,41 +43,52 @@ video, canvas {
 #legend {
   position:absolute;
   bottom:80px;
-  left:10px;
-  background:rgba(0,0,0,0.6);
-  padding:6px 10px;
-  border-radius:8px;
+  left:12px;
+
+  background:rgba(0,0,0,0.7);
+  padding:8px 10px;
+  border-radius:10px;
+
   font-size:12px;
+  line-height:1.6;
+
+  backdrop-filter: blur(4px);
   z-index:3;
 }
 
-.dot {
-  display:inline-block;
+#legend div{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.dot{
   width:10px;
   height:10px;
   border-radius:50%;
-  margin-right:6px;
 }
 
-.normal-dot { background:#22c55e; }
-.def-dot { background:#ef4444; }
-.sel-dot { background:#facc15; }
+.normal-dot{ background:#22c55e; }
+.def-dot{ background:#ef4444; }
+.sample-dot{ background:#facc15; }
 
 /* === FLOAT CONTROL BAR === */
-#controls {
+#controls{
   position:absolute;
   bottom:10px;
   left:50%;
   transform:translateX(-50%);
+
   display:flex;
   gap:8px;
+
   background:rgba(0,0,0,0.6);
-  padding:8px 10px;
-  border-radius:12px;
+  padding:8px 12px;
+  border-radius:14px;
   z-index:4;
 }
 
-button {
+button{
   padding:8px 12px;
   border:none;
   border-radius:8px;
@@ -83,6 +102,9 @@ button {
 .analyze { background:#f59e0b; }
 .reset { background:#6b7280; }
 
+button:active{
+  transform:scale(0.95);
+}
 </style>
 </head>
 
@@ -91,15 +113,21 @@ button {
 <h3>G6PD Analyzer</h3>
 
 <div id="container">
+
+  <!-- CAMERA -->
   <video id="video" autoplay playsinline muted></video>
+
+  <!-- GRID OVERLAY -->
   <canvas id="overlay"></canvas>
 
+  <!-- LEGEND -->
   <div id="legend">
-    <div><span class="dot normal-dot"></span> Normal</div>
-    <div><span class="dot def-dot"></span> Deficient</div>
-    <div><span class="dot sel-dot"></span> Sample</div>
+    <div><span class="dot normal-dot"></span>Normal</div>
+    <div><span class="dot def-dot"></span>Deficient</div>
+    <div><span class="dot sample-dot"></span>Sample</div>
   </div>
 
+  <!-- CONTROL BAR -->
   <div id="controls">
     <button id="startBtn" class="start">Start</button>
     <button onclick="setMode('normal')" class="normal">Normal</button>
@@ -107,9 +135,13 @@ button {
     <button id="analyzeBtn" class="analyze">Analyze</button>
     <button onclick="resetApp()" class="reset">Reset</button>
   </div>
+
 </div>
 
+<!-- LIB -->
 <script src="https://docs.opencv.org/4.5.5/opencv.js"></script>
+
+<!-- APP FILES -->
 <script src="camera.js"></script>
 <script src="grid.js"></script>
 <script src="analyzer.js"></script>
