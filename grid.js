@@ -7,19 +7,22 @@ function handleTap(x,y,geo){
 
   let cell = gridState[row][col];
 
-  // 🔥 default = select
-  if(mode==="select"){
+  // ✅ DEFAULT = select
+  if(mode === "select"){
     cell.selected = !cell.selected;
   }
 
-  else if(mode==="normal"){
-    cell.type="normal";
-    mode="select"; // 🔥 auto return
+  // ✅ set control แล้วเด้งกลับ select
+  else if(mode === "normal"){
+    cell.type = "normal";
+    cell.selected = true;
+    mode = "select";
   }
 
-  else if(mode==="deficient"){
-    cell.type="deficient";
-    mode="select"; // 🔥 auto return
+  else if(mode === "deficient"){
+    cell.type = "deficient";
+    cell.selected = true;
+    mode = "select";
   }
 
   console.log("Tap:", row, col, cell);
