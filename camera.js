@@ -1,47 +1,43 @@
-async function startCameraDirect(){
+let video;
+let currentStream = null;
 
-  try {
+function startCameraDirect(){
 
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      alert("Camera API not supported");
-      return;
-    }
+  video = document.getElementById("video");
+
+  if(!navigator.mediaDevices){
+    alert("Camera not supported");
+    return;
+  }
+
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" },
+    audio:false
+  })
+  .then(stream => {
 
     if(currentStream){
       currentStream.getTracks().forEach(t=>t.stop());
     }
 
-    // 🔥 สำคัญ: ไม่ใช้ await ก่อน getUserMedia
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },
-      audio:false
-    })
-    .then(stream => {
+    currentStream = stream;
+    video.srcObject = stream;
 
-      currentStream = stream;
-      video.srcObject = stream;
+    return video.play();
+  })
+  .then(()=>{
 
-      return video.play();
+    console.log("✅ Camera started");
 
-    })
-    .then(()=>{
+    isCameraOn = true;
+    resetApp();
+    startLoop();
 
-      console.log("✅ Camera started");
-
-      isCameraOn = true;
-      resetApp();
-      startLoop();
-
-    })
-    .catch(err=>{
-
-      console.error("❌ Camera error:", err);
-
-      alert("Camera error:\n" + err.name + "\n" + err.message);
-
-    });
-
-  } catch(e){
-    console.error(e);
-  }
+  })
+  .catch(err=>{
+    console.error(err);
+    alert(err.name + ": " + err.message);
+  });
 }
+
+window.startCameraDirect = startCameraDirect;
