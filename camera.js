@@ -1,5 +1,5 @@
 let video;
-let streamRef = null;
+let currentStream = null;
 
 function initCameraElement(){
   video = document.getElementById("video");
@@ -7,48 +7,16 @@ function initCameraElement(){
 
 async function startCamera(){
 
-  // 🔥 stop old camera
-  if(streamRef){
-    streamRef.getTracks().forEach(t=>t.stop());
+  // 🔥 ปิดกล้องเก่า
+  if(currentStream){
+    currentStream.getTracks().forEach(track=>track.stop());
   }
 
   const stream = await navigator.mediaDevices.getUserMedia({
-    video:{ facingMode:{ideal:"environment"} }
+    video: { facingMode: { ideal: "environment" } }
   });
 
-  streamRef = stream;
-  video.srcObject = stream;
-
-  return new Promise(resolve=>{
-    video.onloadedmetadata = ()=>{
-      video.play();
-      resolve();
-    };
-  });
-}
-
-function captureFrame(){
-  let canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  let ctx = canvas.getContext("2d");
-  ctx.drawImage(video,0,0);
-
-  return canvas;
-}let video;
-
-function initCameraElement(){
-  video = document.getElementById("video");
-}
-
-async function startCamera(){
-
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: { ideal: "environment" }
-    }
-  });
+  currentStream = stream;
 
   video.srcObject = stream;
 
@@ -58,16 +26,4 @@ async function startCamera(){
       resolve();
     };
   });
-}
-
-function captureFrame(){
-
-  let canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  let ctx = canvas.getContext("2d");
-  ctx.drawImage(video,0,0);
-
-  return canvas;
 }
