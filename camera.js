@@ -1,33 +1,35 @@
 let video;
 
 function initCameraElement(){
-  video = document.getElementById('video');
+  video = document.getElementById("video");
 }
 
 async function startCamera(){
 
-  try{
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      facingMode: { ideal: "environment" }
+    }
+  });
 
-    // 🔥 FIX iOS: ต้องเรียกจาก user gesture + ใช้ constraints แบบนี้
-    const constraints = {
-      audio:false,
-      video:{
-        facingMode: "environment",   // fallback universal
-        width: { ideal: 1280 },
-        height:{ ideal: 720 }
-      }
+  video.srcObject = stream;
+
+  return new Promise(resolve=>{
+    video.onloadedmetadata = ()=>{
+      video.play();
+      resolve();
     };
+  });
+}
 
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+function captureFrame(){
 
-    video.srcObject = stream;
+  let canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
 
-    await video.play();
+  let ctx = canvas.getContext("2d");
+  ctx.drawImage(video,0,0);
 
-    console.log("✅ Camera started (rear preferred)");
-
-  }catch(err){
-    alert("Camera error: " + err.message);
-    console.error(err);
-  }
+  return canvas;
 }
