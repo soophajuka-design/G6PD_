@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>G6PD Analyzer</title>
 
 <style>
@@ -61,6 +61,7 @@ canvas {
   margin-right:6px;
 }
 
+/* dot colors (แยกจากปุ่ม) */
 .dot.normal { background:#22c55e; }
 .dot.deficient { background:#ef4444; }
 .dot.selected { background:#facc15; }
@@ -88,6 +89,7 @@ button {
   color:white;
 }
 
+/* ปุ่ม */
 .start { background:#2563eb; }
 .normal { background:#22c55e; }
 .deficient { background:#ef4444; }
@@ -108,6 +110,7 @@ button:active {
   <video id="video" autoplay playsinline muted></video>
   <canvas id="overlay"></canvas>
 
+  <!-- LEGEND -->
   <div id="legend">
     <div><span class="dot normal"></span> Normal</div>
     <div><span class="dot deficient"></span> Deficient</div>
@@ -116,50 +119,22 @@ button:active {
   </div>
 </div>
 
+<!-- CONTROL BAR -->
 <div id="controls">
   <button class="start" id="startBtn">Start</button>
   <button class="normal" onclick="setMode('normal')">Normal</button>
   <button class="deficient" onclick="setMode('deficient')">Deficient</button>
-  <button class="analyze" id="analyzeBtn">Analyze</button>
+  <button class="analyze" onclick="analyze()">Analyze</button>
   <button class="reset" onclick="resetApp()">Reset</button>
 </div>
 
-<!-- ✅ OpenCV (ต้องมาก่อน analyzer) -->
-<script src="https://docs.opencv.org/4.5.5/opencv.js"></script>
+<!-- ✅ สำคัญ: ใช้ defer ทั้งหมด -->
+<script defer src="https://docs.opencv.org/4.5.5/opencv.js"></script>
 
-<!-- ✅ App scripts (ลำดับสำคัญมาก) -->
-<script src="camera.js"></script>
-<script src="grid.js"></script>
-<script src="analyzer.js"></script>
-<script src="app.js"></script>
-
-<!-- 🔥 FIX เสถียรสุดสำหรับ iPad -->
-<script>
-window.addEventListener("load", function(){
-
-  const btn = document.getElementById("analyzeBtn");
-
-  btn.addEventListener("click", function(){
-
-    if(typeof analyze !== "function"){
-      alert("analyze() not loaded");
-      console.error("❌ analyze not found");
-      return;
-    }
-
-    if(typeof cv === "undefined" || !cv.Mat){
-      alert("OpenCV not ready");
-      console.error("❌ OpenCV not ready");
-      return;
-    }
-
-    console.log("✅ Analyze button clicked");
-
-    analyze();
-  });
-
-});
-</script>
+<script defer src="camera.js"></script>
+<script defer src="grid.js"></script>
+<script defer src="analyzer.js"></script>
+<script defer src="app.js"></script>
 
 </body>
 </html>
