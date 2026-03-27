@@ -1,97 +1,108 @@
-let overlay, ctx, geo;
+let overlay, ctx;
+let geo;
 let isCameraOn = false;
+let needRedraw = true;
 
-window.onload = ()=>{
+window.onload = () => {
 
   initCameraElement();
 
-  overlay = document.getElementById("overlay");
-  ctx = overlay.getContext("2d");
+  overlay = document.getElementById('overlay');
+  ctx = overlay.getContext('2d');
 
-  document.getElementById("startBtn").onclick = async ()=>{
+  // START CAMERA
+  document.getElementById('startBtn').onclick = async () => {
     await startCamera();
     isCameraOn = true;
     startLoop();
   };
 
-  document.getElementById("analyzeBtn").onclick = ()=>{
-    analyze();
-  };
+  // TAP SELECT
+  overlay.addEventListener('click', (e)=>{
 
-  overlay.addEventListener("click", e=>{
+    if(!isCameraOn) return;
 
-  if(!isCameraOn) return;
+    const rect = overlay.getBoundingClientRect();
 
-  const rect = overlay.getBoundingClientRect();
-  const vr = getVideoRect();
+    const x = (e.clientX - rect.left) * (overlay.width / rect.width);
+    const y = (e.clientY - rect.top) * (overlay.height / rect.height);
 
-  const scaleX = overlay.width / rect.width;
-  const scaleY = overlay.height / rect.height;
+    handleTap(x, y, geo);
 
-  const x = (e.clientX - rect.left) * scaleX;
-  const y = (e.clientY - rect.top) * scaleY;
+    needRedraw = true;
+  });
 
-  // 🔥 จำกัดให้ tap อยู่ใน video จริง
-  if(
-    x < vr.offsetX ||
-    x > vr.offsetX + vr.drawWidth ||
-    y < vr.offsetY ||
-    y > vr.offsetY + vr.drawHeight
-  ){
-    return;
+  // 🔥 FIX: bind analyze button
+  const analyzeBtn = document.getElementById("analyzeBtn");
+
+  if(analyzeBtn){
+    analyzeBtn.onclick = ()=>{
+
+      if(typeof analyze !== "function"){
+        alert("analyze() not loaded");
+        console.error("analyze not found");
+        return;
+      }
+
+      console.log("✅ Analyze clicked");
+
+      analyze();
+    };
   }
-
-  handleTap(x, y, geo);
-  redraw();
-});
 };
 
-function redraw(){
+function startLoop(){
 
-  ctx.clearRect(0,0,overlay.width,overlay.height);
+  function loop(){
 
-  const vr = getVideoRect();
+    if(video.videoWidth > 0){
 
-  geo = drawGrid(overlay, ctx, vr); // 🔥 ส่ง rect เข้าไป
-}
+      if(overlay.width !== video.videoWidth ||
+         overlay.height !== video.videoHeight){
 
+        overlay.width = video.videoWidth;
+        overlay.height = video.videoHeight;
 
+        needRedraw = true;
+      }
 
+      if(needRedraw){
+        ctx.clearRect(0,0,overlay.width, overlay.height);
+        geo = drawGrid(overlay, ctx);
+        needRedraw = false;
+      }
+    }
 
-function getVideoRect(){
-
-  const container = overlay.getBoundingClientRect();
-
-  const videoRatio = video.videoWidth / video.videoHeight;
-  const containerRatio = container.width / container.height;
-
-  let drawWidth, drawHeight, offsetX, offsetY;
-
-  if(videoRatio > containerRatio){
-    // video กว้างกว่า
-    drawWidth = container.width;
-    drawHeight = container.width / videoRatio;
-    offsetX = 0;
-    offsetY = (container.height - drawHeight)/2;
-  }else{
-    // video สูงกว่า
-    drawHeight = container.height;
-    drawWidth = container.height * videoRatio;
-    offsetX = (container.width - drawWidth)/2;
-    offsetY = 0;
+    requestAnimationFrame(loop);
   }
 
-  return { drawWidth, drawHeight, offsetX, offsetY };
+  loop();
 }
 
-
-function resetApp(){
+function resetApp() {
 
   for(let r=0;r<5;r++){
     for(let c=0;c<4;c++){
-      gridState[r][c]={selected:false,type:"sample"};
+      gridState[r][c] = {
+        selected:false,
+        type:"sample"
+      };
     }
   }
 
-  redraw();
+  needRedraw = true;
+
+  console.log("Reset complete");
+}
+
+function drawCorners(ctx, corners){
+  if(!corners) return;
+
+  ctx.fillStyle = "red";
+
+  corners.forEach(p=>{
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 5, 0, 2*Math.PI);
+    ctx.fill();
+  });
 }
