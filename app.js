@@ -1,55 +1,55 @@
 let overlay, ctx, geo;
-let isCameraOn = false;
-let needRedraw = true;
+let needRedraw=true;
+let isCameraOn=false;
 
-window.onload = () => {
+window.onload=()=>{
 
   initCameraElement();
 
-  overlay = document.getElementById('overlay');
-  ctx = overlay.getContext('2d');
+  overlay=document.getElementById("overlay");
+  ctx=overlay.getContext("2d");
 
-  document.getElementById('startBtn').onclick = async ()=>{
+  document.getElementById("startBtn").onclick=async()=>{
     await startCamera();
-    isCameraOn = true;
+    isCameraOn=true;
     startLoop();
   };
 
-  document.getElementById("analyzeBtn").onclick = ()=>{
+  document.getElementById("analyzeBtn").onclick=()=>{
     analyze();
   };
 
-  overlay.addEventListener('click', e=>{
+  overlay.addEventListener("click",e=>{
 
-  if(!isCameraOn) return;
+    if(!isCameraOn) return;
 
-  const rect = overlay.getBoundingClientRect();
+    const rect=overlay.getBoundingClientRect();
 
-  const x = (e.clientX - rect.left) * (overlay.width / rect.width);
-  const y = (e.clientY - rect.top) * (overlay.height / rect.height);
+    const x=(e.clientX-rect.left)*(overlay.width/rect.width);
+    const y=(e.clientY-rect.top)*(overlay.height/rect.height);
 
-  // 🔥 STEP 1: update state
-  handleTap(x, y, geo);
-
-  // 🔥 STEP 2: บังคับ redraw
-  needRedraw = true;
-
-});
+    handleTap(x,y,geo);
+    needRedraw=true;
+  });
 };
 
 function startLoop(){
 
   function loop(){
 
-if(video.videoWidth > 0){
+    if(video.videoWidth>0){
 
-  const rect = overlay.getBoundingClientRect();
+      const rect=overlay.getBoundingClientRect();
 
-  overlay.width = rect.width;
-  overlay.height = rect.height;
+      overlay.width=rect.width;
+      overlay.height=rect.height;
 
-  needRedraw = true;
-}
+      if(needRedraw){
+        ctx.clearRect(0,0,overlay.width,overlay.height);
+        geo=drawGrid(overlay,ctx);
+        needRedraw=false;
+      }
+    }
 
     requestAnimationFrame(loop);
   }
@@ -61,9 +61,9 @@ function resetApp(){
 
   for(let r=0;r<5;r++){
     for(let c=0;c<4;c++){
-      gridState[r][c] = {selected:false,type:"sample"};
+      gridState[r][c]={selected:false,type:"sample"};
     }
   }
 
-  needRedraw = true;
+  needRedraw=true;
 }
