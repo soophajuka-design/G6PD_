@@ -1,4 +1,4 @@
-const video = document.getElementById('webcam');
+ const video = document.getElementById('webcam');
 const canvas = document.getElementById('proc-canvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
 const gridOverlay = document.getElementById('grid-overlay');
