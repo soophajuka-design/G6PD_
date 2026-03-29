@@ -1,150 +1,43 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>G6PD Analyzer</title>
-
-<style>
-body {
-  margin:0;
-  background:#0b0f14;
-  color:white;
-  font-family:system-ui;
-  text-align:center;
-}
-
-h3 {
-  margin:10px;
-}
-
-/* ===== WRAPPER ===== */
-#cameraWrapper{
-  width:100%;
-  max-width:500px;
-  margin:auto;
-}
-
-/* ===== LIVE VIEW ===== */
-#container{
-  position:relative;
-  width:100%;
-  aspect-ratio: 10.65 / 19.2;
-  border-radius:12px;
-  overflow:hidden;
-  background:black;
-}
-
-/* ===== VIDEO (iPhone safe) ===== */
-video{
-  position:absolute;
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-/* ===== OVERLAY ===== */
-canvas{
-  position:absolute;
-  width:100%;
-  height:100%;
-  top:0;
-  left:0;
-  z-index:2;
-}
-
-/* ===== LEGEND ===== */
-#legend{
-  margin-top:8px;
-  text-align:left;
-  padding:10px;
-  background:#111827;
-  border-radius:10px;
-  font-size:13px;
-}
-
-/* legend dot */
-.dot{
-  display:inline-block;
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  margin-right:6px;
-}
-
-.sample { background:#facc15; }
-.normal { background:#22c55e; }
-.deficient { background:#ef4444; }
-
-/* ===== CONTROL BAR ===== */
-#controls{
-  position:fixed;
-  bottom:0;
-  width:100%;
-  background:#111827;
-  padding:12px;
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  box-shadow:0 -2px 10px rgba(0,0,0,0.6);
-}
-
-/* buttons */
-button{
-  padding:10px 14px;
-  border:none;
-  border-radius:8px;
-  font-size:14px;
-  color:white;
-}
-
-.start { background:#2563eb; }
-.normal { background:#22c55e; }
-.deficient { background:#ef4444; }
-.analyze { background:#f59e0b; }
-.reset { background:#6b7280; }
-
-button:active {
-  transform:scale(0.95);
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>G6PD Analyzer Pro v2.0</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+    <div class="app-container">
+        <header class="header-compact">
+            <div id="live-clock">--/--/---- --:--:--</div>
+            <strong>G6PD Real-time HSV Analyzer</strong> | 365nm UV
+        </header>
 
-<h3>G6PD Analyzer</h3>
+        <div id="camera-container">
+            <video id="webcam" autoplay playsinline></video>
+            <div id="grid-overlay"></div>
+        </div>
 
-<!-- ===== CAMERA BLOCK ===== -->
-<div id="cameraWrapper">
+        <div class="controls">
+            <button id="save-btn" class="btn-primary">💾 บันทึกผลภาพถ่าย</button>
+            <button id="reset-btn" class="btn-secondary">🔄 Reset</button>
+        </div>
 
-  <div id="container">
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="overlay"></canvas>
-  </div>
-
-  <!-- ===== LEGEND ===== -->
-  <div id="legend">
-    <div><span class="dot sample"></span> Sample</div>
-    <div><span class="dot normal"></span> ICQ-Normal</div>
-    <div><span class="dot deficient"></span> ICQ-Deficient</div>
-  </div>
-
-</div>
-
-<!-- ===== CONTROLS ===== -->
-<div id="controls">
-  <!-- 🔥 iPhone ต้องใช้ onclick -->
-  <button class="start" onclick="startCameraDirect()">Start</button>
-  <button class="normal" onclick="setMode('normal')">Normal</button>
-  <button class="deficient" onclick="setMode('deficient')">Deficient</button>
-  <button class="analyze" onclick="analyze()">Analyze</button>
-  <button class="reset" onclick="resetApp()">Reset</button>
-</div>
-
-<!-- ===== SCRIPTS ===== -->
-<script src="camera.js"></script>
-<script src="grid.js"></script>
-<script src="analyzer.js"></script>
-<script src="app.js"></script>
-
+        <div id="table-area">
+            <table id="result-table">
+                <thead>
+                    <tr>
+                        <th>Pos</th>
+                        <th>Type</th>
+                        <th>Intensity (V)</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+    <canvas id="proc-canvas" style="display:none;"></canvas>
+    <script src="app.js"></script>
 </body>
 </html>
