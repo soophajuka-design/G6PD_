@@ -134,6 +134,7 @@ function startCamera() {
         .then(s => video.srcObject = s);
 }
 
+/*
 // ฟังก์ชัน Capture พร้อม Watermark
 document.getElementById('save-btn').onclick = () => {
     const reportCanvas = document.createElement('canvas');
@@ -159,7 +160,42 @@ document.getElementById('save-btn').onclick = () => {
     link.href = reportCanvas.toDataURL();
     link.click();
 };
+*/
 
+// ... (ส่วนการคำนวณ HSV และ Recursive Loop เหมือนเดิม) ...
+// แก้ไขฟังก์ชัน Capture ให้รองรับการบันทึกตารางผลการตรวจเข้าไปในภาพด้วย (ถ้าต้องการ)
+document.getElementById('save-btn').onclick = () => {
+    const reportCanvas = document.createElement('canvas');
+    // ใช้ขนาดตามวิดีโอจริงเพื่อให้ภาพชัด
+    reportCanvas.width = video.videoWidth;
+    reportCanvas.height = video.videoHeight;
+    const rCtx = reportCanvas.getContext('2d');
+
+    // 1. วาดรูปจากกล้อง
+    rCtx.drawImage(video, 0, 0);
+    
+    // 2. วาด Overlay ข้อมูลผลการตรวจ (Watermark แบบเข้มข้น)
+    rCtx.fillStyle = "rgba(0,0,0,0.7)";
+    rCtx.fillRect(0, 0, reportCanvas.width, 160);
+    
+    rCtx.fillStyle = "#00ff00";
+    rCtx.font = "bold 40px Arial";
+    rCtx.fillText("G6PD ANALYZER PRO REPORT", 40, 60);
+    
+    rCtx.fillStyle = "white";
+    rCtx.font = "30px Courier New";
+    const timestamp = new Date().toLocaleString('th-TH');
+    rCtx.fillText(`DATA CAPTURED: ${timestamp}`, 40, 110);
+    rCtx.fillText(`UNIT: % INTENSITY (HSV MODEL)`, 40, 145);
+
+    // 3. ดาวน์โหลดไฟล์
+    const link = document.createElement('a');
+    link.download = `G6PD_ANALYSIS_${Date.now()}.png`;
+    link.href = reportCanvas.toDataURL('image/png');
+    link.click();
+};
+
+// ... (ส่วนอื่นๆ ของโค้ดคงเดิม) ...
 document.getElementById('reset-btn').onclick = () => location.reload();
 
 initApp();
